@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MatrixMultiplication", "Mat
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "N-Body", "N-Body\N-Body.vcxproj", "{EF11CB87-8C60-4426-A52B-6FE2228B959F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SpMV", "SpMV\SpMV.vcxproj", "{CF240601-D537-48E0-B916-2E30F99097C5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -59,6 +61,14 @@ Global
 		{EF11CB87-8C60-4426-A52B-6FE2228B959F}.Release|Win32.Build.0 = Release|Win32
 		{EF11CB87-8C60-4426-A52B-6FE2228B959F}.Release|x64.ActiveCfg = Release|x64
 		{EF11CB87-8C60-4426-A52B-6FE2228B959F}.Release|x64.Build.0 = Release|x64
+		{CF240601-D537-48E0-B916-2E30F99097C5}.Debug|Win32.ActiveCfg = Debug|Win32
+		{CF240601-D537-48E0-B916-2E30F99097C5}.Debug|Win32.Build.0 = Debug|Win32
+		{CF240601-D537-48E0-B916-2E30F99097C5}.Debug|x64.ActiveCfg = Debug|x64
+		{CF240601-D537-48E0-B916-2E30F99097C5}.Debug|x64.Build.0 = Debug|x64
+		{CF240601-D537-48E0-B916-2E30F99097C5}.Release|Win32.ActiveCfg = Release|Win32
+		{CF240601-D537-48E0-B916-2E30F99097C5}.Release|Win32.Build.0 = Release|Win32
+		{CF240601-D537-48E0-B916-2E30F99097C5}.Release|x64.ActiveCfg = Release|x64
+		{CF240601-D537-48E0-B916-2E30F99097C5}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

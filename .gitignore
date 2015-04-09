@@ -63,3 +63,6 @@ samples/Convolution/x64/
 samples/N-Body/x64/
 samples/MatrixMultiplication/x64/
 *.unsuccessfulbuild
+
+samples/SpMV/data/*
+samples/SpMV/Release/*

@@ -30,7 +30,7 @@
 
 #include "../internal/cuda_utils.hpp"
 
-#define MAX_NODE_RANK_SIZE 20
+//#define MAX_NODE_RANK_SIZE 20
 
 
 #ifndef max
@@ -52,8 +52,15 @@ namespace maps
 		class Node;
 		class Edge;
 	public:
-		GraphMapper(unsigned int blockSize){_nodeCount=0;_edgeCount=0;_blockSize = blockSize;_d_p_c_count_map=0;_d_p_c_ind_map=0;_d_b_c_data_map=0;_d_b_c_ind_map=0;_d_p_c_s_ind_map=0;_MaxNumOfConstVecsInBlock=0;};
-		~GraphMapper(){if (_d_p_c_ind_map) releaseIndexMap();};
+		GraphMapper(unsigned int blockSize, bool symmetric = true)
+		{
+			_nodeCount=0;_edgeCount=0;_blockSize = blockSize;_gpuData._d_p_c_count_map=0;
+			_gpuData._d_p_c_ind_map=0;_gpuData._d_b_c_data_map=0;_gpuData._d_b_c_ind_map=0;
+			_gpuData._d_p_c_s_ind_map=0;_MaxNumOfConstVecsInBlock=0;
+			_symmetric = symmetric;
+		};
+
+		~GraphMapper(){if (_gpuData._d_p_c_ind_map) releaseIndexMap();};
 
 		int addNode() 
 		{
@@ -73,11 +80,16 @@ namespace maps
 		 * Initializes the graph with a fixed number of nodes
 		 *
 		 */
-		bool init(size_t numNodes) 
+		bool init(size_t numNodes)
 		{
 			// NOTE: add check and cleanup if needed
 			addNodes(numNodes);
 			return true;
+		}
+
+		void setMaxNodeRankSize(size_t maxNodeRankSize) 
+		{
+			_maxNodeRankSize = maxNodeRankSize+1;
 		}
 
 		/**
@@ -96,13 +108,22 @@ namespace maps
 		 */
 		int addEdge(unsigned int node1Ind,unsigned int node2Ind)
 		{
-			_edgeCount++;
+			// We increment edgecount in the symmetric case before we get the index
+			// to support negative edges (e.g. 1,-1)
+			if (_symmetric)
+				_edgeCount++;
+
 			int edgeInd = _edgeCount;
+
+			if (!_symmetric)
+				_edgeCount++;
+
 			GraphMapper::Edge tmpEdge(this,node1Ind,node2Ind,edgeInd);
 			_edgeList.push_back(tmpEdge);
 			_nodeList[node1Ind].addEdge(edgeInd);
-			// using the sign to know the dircetion of the edge
-			_nodeList[node2Ind].addEdge(-edgeInd);
+			// using the sign to know the direction of the edge
+			if (_symmetric)
+				_nodeList[node2Ind].addEdge(-edgeInd);
 			return edgeInd;
 		}
 
@@ -113,48 +134,68 @@ namespace maps
 		 * @note  this function already copies the index maps
 		 * to the GPU
 		 */
-		void createIndexMap()
+		bool createIndexMap()
 		{
 			_nodeEdgeIndOffsetMap.resize(_nodeCount);
 
+			//printf("Node count: %d\n", _nodeCount);
+
 			unsigned int count=0;
-			//build particle to constraint map
+			//build node to edge map
 
 			//printf("graph has %d nodes\n",_nodeCount);
 
 			// compose a list of edges for each node
-			for (unsigned int nInd=0; nInd< _nodeCount; nInd++)
+			for (unsigned int _nInd=0; _nInd< _nodeCount; _nInd++)
 			{
-				Node* pNode = &_nodeList[nInd];
+				Node* pNode = &_nodeList[_nInd];
 
 				if (pNode->_exclude == true)
 				{
-					_nodeEdgeIndOffsetMap[nInd].x = 0;
-					_nodeEdgeIndOffsetMap[nInd].y = count;
+					_nodeEdgeIndOffsetMap[_nInd].x = 0;
+					_nodeEdgeIndOffsetMap[_nInd].y = count;
 				}
 				else
 				{
-					_nodeEdgeIndOffsetMap[nInd].x = pNode->_edgeIndList.size();
-					_nodeEdgeIndOffsetMap[nInd].y = count;
+					_nodeEdgeIndOffsetMap[_nInd].x = pNode->_edgeIndList.size();
+					_nodeEdgeIndOffsetMap[_nInd].y = count;
 					count += pNode->_edgeIndList.size();
 
 					for (unsigned int eCount=0; eCount < pNode->_edgeIndList.size(); eCount++)
 					{
 						int ind = 0;
-						if (pNode->_edgeIndList[eCount] > 0)
-							ind = pNode->_edgeIndList[eCount]-1;
+						if (_symmetric)
+						{
+							if (pNode->_edgeIndList[eCount] > 0)
+								ind = pNode->_edgeIndList[eCount]-1;
+							else
+								ind = pNode->_edgeIndList[eCount]+1;
+						}
 						else
-							ind = pNode->_edgeIndList[eCount]+1;
-						_nodeEdgeIndexList.push_back(ind);
+							ind = pNode->_edgeIndList[eCount];
+						//_nodeEdgeIndexList.push_back(ind);
+						_nodeEdgeIndexList.push_back(_edgeList[ind]._iNode2Ind);
 					}
 				}
 
 			}
 
-			CudaAllocAndCopy((void**)&_d_p_c_count_map,(void*)&(*_nodeEdgeIndOffsetMap.begin()),_nodeEdgeIndOffsetMap.size()*sizeof(uint2));
-			CudaAllocAndCopy((void**)&_d_p_c_ind_map,(void*)&(*_nodeEdgeIndexList.begin()),_nodeEdgeIndexList.size()*sizeof(int));
+			
+			//printf("Node edge index offset map: ");
+			//for(auto iter : _nodeEdgeIndOffsetMap)
+			//	printf("(%d, %d),  ", iter.x, iter.y);
+			//printf("\n");
 
-			//for each block find the needed constraints 
+			//printf("Node edge index list: ");
+			//for(auto iter : _nodeEdgeIndOffsetMap)
+			//	printf("%d, ", iter);
+			//printf("\n");
+			
+
+			CudaAllocAndCopy((void**)&_gpuData._d_p_c_count_map,(void*)&(*_nodeEdgeIndOffsetMap.begin()),_nodeEdgeIndOffsetMap.size()*sizeof(uint2));
+			CudaAllocAndCopy((void**)&_gpuData._d_p_c_ind_map,(void*)&(*_nodeEdgeIndexList.begin()),_nodeEdgeIndexList.size()*sizeof(int));
+
+			//for each block find the needed indexes 
 			unsigned int numPartInBlock = _blockSize;
 			unsigned int numBlocks = RoundUp(_nodeCount,numPartInBlock);
 			unsigned int nInd=0;
@@ -163,7 +204,7 @@ namespace maps
 			unsigned int maxOverlap=0;
 			unsigned int totalOverLap = 0;
 			unsigned int overlapCount = 0;
-			std::vector< std::unordered_set<unsigned int> > _blockEdgeIndSets;
+			std::vector<std::unordered_set<unsigned int>> _blockEdgeIndSets;
 			_blockEdgeIndSets.resize(numBlocks);
 
 			//serialize block data
@@ -173,7 +214,7 @@ namespace maps
 
 			unsigned int maxRankOfNode = 0;
 			unsigned int numPartRoundUp = RoundUp(_nodeCount,512)*512;
-			_sharedNodeEdgeIndexBigList.resize(numPartRoundUp*MAX_NODE_RANK_SIZE);
+			_sharedNodeEdgeIndexBigList.resize(numPartRoundUp*_maxNodeRankSize);
 
 			for (unsigned int blockId=0; blockId < numBlocks; blockId++)
 			{
@@ -190,17 +231,25 @@ namespace maps
 
 							for (unsigned int eCount=0; eCount < pNode->_edgeIndList.size(); eCount++)
 							{
-								unsigned int eInd = abs(pNode->_edgeIndList[eCount]);
-								if (curBlockSet->find(eInd) != curBlockSet->end())
+								unsigned int nnInd;
+
+								if (_symmetric)
+									nnInd = abs(_edgeList[pNode->_edgeIndList[eCount]-1]._iNode2Ind);
+								else
+									nnInd = abs(_edgeList[pNode->_edgeIndList[eCount]]._iNode2Ind);
+
+								if (curBlockSet->find(nnInd) != curBlockSet->end())
 									overlap++;
 								else
-									curBlockSet->insert(eInd);
+									curBlockSet->insert(nnInd);
 							}
 						}
 					}
 				}// end of block loop
 
-				//printf("block %d has %d uniq elements %d overlap\n",blockId,curBlockSet->size(),overlap);
+				//TODO: SHOULD SORT THE INDEXES
+
+				//printf("block %d has %d unique elements %d overlap\n",blockId,curBlockSet->size(),overlap);
 				_maxBlockSize = max(curBlockSet->size(),_maxBlockSize);
 				maxOverlap = max(overlap,maxOverlap);
 				totalOverLap += overlap;
@@ -216,32 +265,78 @@ namespace maps
 
 				for (unsigned int blockSetInd=0; blockSetInd< curBlockSet->size(); blockSetInd++)
 				{
-					_BlockEdgeIndexMap.push_back(*curBlockSetIt-1);
+					if (_symmetric)
+						_BlockEdgeIndexMap.push_back(*curBlockSetIt-1);
+					else
+						_BlockEdgeIndexMap.push_back(*curBlockSetIt);
 					curBlockSetIt++;
 				}
 
 
 				//prepare internal shared memory indexes for the constraints connected to a particle
-				for (unsigned int nInd = blockStartPartId; nInd<(blockId+1)*numPartInBlock; nInd++)
+				for (unsigned int nInd__ = blockStartPartId; nInd__<(blockId+1)*numPartInBlock; nInd__++)
 				{
-					if (nInd < _nodeCount)
+					if (nInd__ < _nodeCount)
 					{
-						Node* pNode = &_nodeList[nInd];
+						Node* pNode = &_nodeList[nInd__];
 						if (pNode->_exclude != true)
 						{
 							unsigned int iCount=0;
-							for (curBlockSetIt = curBlockSet->begin(); curBlockSetIt != curBlockSet->end(); curBlockSetIt++)
+							if (_symmetric)
 							{
-								if (_edgeList[*curBlockSetIt-1]._iNode1Ind == nInd)
+								for (curBlockSetIt = curBlockSet->begin(); curBlockSetIt != curBlockSet->end(); curBlockSetIt++)
 								{
-									_sharedNodeEdgeIndexBigList[iCount*numPartRoundUp+nInd] = (std::distance(curBlockSet->begin(),curBlockSet->find(*curBlockSetIt))+1);
-									iCount++;
-								}
+										if (iCount >= _maxNodeRankSize)
+										{
+											if ((_edgeList[*curBlockSetIt-1]._iNode1Ind == nInd__) || (_edgeList[*curBlockSetIt-1]._iNode2Ind == nInd__) )
+											{
+												//printf("too many edges connected to node %d max %d cur count %d\n",nInd__, _maxNodeRankSize, iCount);
+												iCount++;
+											}
+										}
+										else
+										{
+											if (_edgeList[*curBlockSetIt-1]._iNode1Ind == nInd__)
+											{
+												_sharedNodeEdgeIndexBigList[iCount*numPartRoundUp+nInd__] = (std::distance(curBlockSet->begin(),curBlockSet->find(*curBlockSetIt))+1);
+												iCount++;
+											}
 
-								if (_edgeList[*curBlockSetIt-1]._iNode2Ind == nInd) 
+											if (_symmetric && _edgeList[*curBlockSetIt-1]._iNode2Ind == nInd__) 
+											{
+												_sharedNodeEdgeIndexBigList[iCount*numPartRoundUp+nInd__] = (-(std::distance(curBlockSet->begin(),curBlockSet->find(*curBlockSetIt)))-1);
+												iCount++;
+											}
+										}
+								}
+									//else
+									//{
+									//	if (iCount >= _maxNodeRankSize)
+									//	{
+									//		//return false;
+									//		if ((_edgeList[*curBlockSetIt]._iNode1Ind == nInd__))
+									//		{
+									//			//printf("too many edges connected to node %d max %d cur count %d\n",nInd__, _maxNodeRankSize, iCount);
+									//			iCount++;
+									//		}
+									//	}
+									//	else
+									//	{
+									//		//if (_edgeList[*curBlockSetIt]._iNode1Ind == nInd__)
+									//		if(IsConnected(nInd__, *curBlockSetIt))										
+									//		{
+									//			_sharedNodeEdgeIndexBigList[iCount*numPartRoundUp+nInd__] = (std::distance(curBlockSet->begin(),curBlockSet->find(*curBlockSetIt)));
+									//			iCount++;
+									//		}
+									//	}
+									//}
+							}
+							else
+							{
+								Node &pCurNode = _nodeList[nInd__];
+								for (iCount = 0; iCount < pCurNode._edgeIndList.size(); iCount++)
 								{
-									_sharedNodeEdgeIndexBigList[iCount*numPartRoundUp+nInd] = (-(std::distance(curBlockSet->begin(),curBlockSet->find(*curBlockSetIt)))-1);
-									iCount++;
+									_sharedNodeEdgeIndexBigList[iCount*numPartRoundUp+nInd__] = (std::distance(curBlockSet->begin(),curBlockSet->find(_edgeList[pCurNode._edgeIndList[iCount]]._iNode2Ind)));
 								}
 							}
 
@@ -251,16 +346,32 @@ namespace maps
 				}
 			}
 
+			//printf("maxRank is %d\n",maxRankOfNode);
 
+			//printf("Block shared edge (num, offset): ");
+			//for(auto iter : _BlockSharedEdgeNumAndOffset)
+			//	printf("(%d, %d),  ", iter.x, iter.y);
+			//printf("\n");
+
+			//printf("Block edge index map: ");
+			//for(auto iter : _BlockEdgeIndexMap)
+			//	printf("%d, ", iter);
+			//printf("\n");
+
+			//printf("Shared node edge index big list: ");
+			//for(auto iter : _sharedNodeEdgeIndexBigList)
+			//	printf("%d, ", iter);
+			//printf("\n");
 
 			//printf("num const %d num part %d, max Block %d max Overlap %d avg overlap %.2f\n",_edgeCount,_nodeCount,_maxBlockSize,maxOverlap,(float)totalOverLap/(float)overlapCount);
 
-			CudaAllocAndCopy((void**)&_d_b_c_data_map,(void*)&(*_BlockSharedEdgeNumAndOffset.begin()),_BlockSharedEdgeNumAndOffset.size()*sizeof(uint2));
-			CudaAllocAndCopy((void**)&_d_b_c_ind_map,(void*)&(*_BlockEdgeIndexMap.begin()),_BlockEdgeIndexMap.size()*sizeof(unsigned int));
-			CudaAllocAndCopy((void**)&_d_p_c_s_ind_map,(void*)&(*_sharedNodeEdgeIndexBigList.begin()),maxRankOfNode*numPartRoundUp*sizeof(unsigned int));
+			CudaAllocAndCopy((void**)&_gpuData._d_b_c_data_map,(void*)&(*_BlockSharedEdgeNumAndOffset.begin()),_BlockSharedEdgeNumAndOffset.size()*sizeof(uint2));
+			CudaAllocAndCopy((void**)&_gpuData._d_b_c_ind_map,(void*)&(*_BlockEdgeIndexMap.begin()),_BlockEdgeIndexMap.size()*sizeof(unsigned int));
+			CudaAllocAndCopy((void**)&_gpuData._d_p_c_s_ind_map,(void*)&(*_sharedNodeEdgeIndexBigList.begin()),maxRankOfNode*numPartRoundUp*sizeof(unsigned int));
 
 			_MaxNumOfConstVecsInBlock = _maxBlockSize;
 
+			return true;
 		}
 
 		/**
@@ -268,12 +379,12 @@ namespace maps
 		 */
 		void releaseIndexMap()
 		{
-			CudaSafeFree(_d_p_c_count_map);
-			CudaSafeFree(_d_p_c_ind_map);
+			CudaSafeFree(_gpuData._d_p_c_count_map);
+			CudaSafeFree(_gpuData._d_p_c_ind_map);
 
-			CudaSafeFree(_d_b_c_data_map);
-			CudaSafeFree(_d_b_c_ind_map);
-			CudaSafeFree(_d_p_c_s_ind_map);	
+			CudaSafeFree(_gpuData._d_b_c_data_map);
+			CudaSafeFree(_gpuData._d_b_c_ind_map);
+			CudaSafeFree(_gpuData._d_p_c_s_ind_map);	
 		}
 
 
@@ -282,6 +393,7 @@ namespace maps
 		std::vector<Edge> _edgeList;
 		unsigned int _nodeCount;
 		unsigned int _edgeCount;
+		size_t _maxNodeRankSize;
 
 		unsigned int _blockSize;
 
@@ -291,30 +403,37 @@ namespace maps
 
 		std::vector<uint2> _BlockSharedEdgeNumAndOffset;
 		std::vector<int> _BlockEdgeIndexMap;
-		//std::vector<int> _sharedNodeEdgeIndexList[MAX_NODE_RANK_SIZE];
+		//std::vector<int> _sharedNodeEdgeIndexList[_maxNodeRankSize];
 		std::vector<int> _sharedNodeEdgeIndexBigList;
 
 		unsigned int _maxBlockSize;
 
-		/// internal device index buffer, needs to be passed to the 
-		/// device container
-		uint2* _d_p_c_count_map;
-		/// internal device index buffer, needs to be passed to the 
-		/// device container
-		int* _d_p_c_ind_map;
+		struct gpuData
+		{
+			/// internal device index buffer, needs to be passed to the 
+			/// device container
+			uint2* _d_p_c_count_map;
+			/// internal device index buffer, needs to be passed to the 
+			/// device container
+			int* _d_p_c_ind_map;
 
-		/// internal device index buffer, needs to be passed to the 
-		/// device container
-		uint2* _d_b_c_data_map;
-		/// internal device index buffer, needs to be passed to the 
-		/// device container
-		unsigned int* _d_b_c_ind_map;
-		/// internal device index buffer, needs to be passed to the 
-		/// device container
-		int* _d_p_c_s_ind_map;
+			/// internal device index buffer, needs to be passed to the 
+			/// device container
+			uint2* _d_b_c_data_map;
+			/// internal device index buffer, needs to be passed to the 
+			/// device container
+			unsigned int* _d_b_c_ind_map;
+			/// internal device index buffer, needs to be passed to the 
+			/// device container
+			int* _d_p_c_s_ind_map;
+		};
 
+		gpuData _gpuData;
 		/// This member holds the maximum buffer needed in shared memory
 		unsigned int _MaxNumOfConstVecsInBlock;
+
+		/// Determine if this is a symmetric graph
+		bool _symmetric;
 
 		/**
 		 * The user can use this function to pass the whole topology

@@ -21,10 +21,12 @@
 #ifndef __MAPS_ADJACENCY_CUH_
 #define __MAPS_ADJACENCY_CUH_
 
+#include <maps/index_mappers/graph_mapper.hpp>
+
 namespace maps
 {
 
-	template <typename T>
+	template <typename T, bool SYMMETRIC = true>
 	class Adjacency
 	{
 	public:
@@ -32,17 +34,18 @@ namespace maps
 
 		__device__ Adjacency() { }
 
-		__device__ void init(int localThreadInd, int numThreadsInBlock, const T *g_corr_half_vec , float *sdata,const uint2* g_constVecsBlockData, const unsigned int* g_half_vec_block_ind, const unsigned int MaxNumOfConstVecsInBlock,
-							 const int &globalIndex,const uint2* g_num_const, const int* g_const_ind, const unsigned int &numPartRoundUp)
+		__device__ void init(int localThreadInd, int numThreadsInBlock,  const T *g_graphData, float *sdata,
+			const GraphMapper::gpuData GraphGPUData, /*const uint2* g_constVecsBlockData, const unsigned int* g_data_block_ind,*/
+			const unsigned int MaxNumOfItemsInBlock, const int &globalIndex,/*const uint2* g_num_const, const int* g_const_ind,*/ const unsigned int &numPartRoundUp)
 		{
 			_sdata = sdata;
-			loadGraphDataToSharedMem(localThreadInd, numThreadsInBlock, _sdata, g_corr_half_vec ,g_constVecsBlockData, g_half_vec_block_ind, MaxNumOfConstVecsInBlock);
+			loadGraphDataToSharedMem(localThreadInd, numThreadsInBlock, _sdata, g_graphData, GraphGPUData._d_b_c_data_map, GraphGPUData._d_b_c_ind_map, MaxNumOfItemsInBlock);
 			_globalIndex = globalIndex;
-			_numOfConst = g_num_const[globalIndex].x;
-			_g_const_ind = g_const_ind;
+			_numOfConst = GraphGPUData._d_p_c_count_map[globalIndex].x;
+			_g_const_ind = GraphGPUData._d_p_c_s_ind_map;
 			_numPartRoundUp = numPartRoundUp;
 
-			_MaxNumOfConstVecsInBlock = MaxNumOfConstVecsInBlock;		
+			_MaxNumOfItemsInBlock = MaxNumOfItemsInBlock;		
 		}
 
 		// TODO(later): Implement chunk-based computations
@@ -69,23 +72,24 @@ namespace maps
 		//	m_chunkNum ++;
 		//}
 
-		__device__ __forceinline__ void loadGraphDataToSharedMem(int localThreadInd, int numThreadsInBlock, float *sdata, const T *g_corr_half_vec ,const uint2* g_constVecsBlockData, const unsigned int* g_half_vec_block_ind, const unsigned int MaxNumOfConstVecsInBlock)
+		__device__ __forceinline__ void loadGraphDataToSharedMem(int localThreadInd, int numThreadsInBlock, float *sdata, const T *g_graph_data ,const uint2* g_constIndexBlockData, const unsigned int* g_graph_data_block_ind, const unsigned int MaxNumOfItemsInBlock)
 		{
 			// first load all needed data to shared memory and then use them
-			int vecLoad = localThreadInd;
+			int loadIndex = localThreadInd;
 
-			uint2 constVecsBlockData = g_constVecsBlockData[blockIdx.x];
+			uint2 numOfItemsForBlock = g_constIndexBlockData[blockIdx.x];
 
-			while (vecLoad < constVecsBlockData.x)
+			while (loadIndex < numOfItemsForBlock.x)
 			{
-				int half_vec_ind = ldg<unsigned int>(g_half_vec_block_ind + constVecsBlockData.y + vecLoad);
-				T tmpVec = ldg<T>(g_corr_half_vec + half_vec_ind);
+				int half_vec_ind = ldg<unsigned int>(g_graph_data_block_ind + numOfItemsForBlock.y + loadIndex);
+				T tmpVec = ldg<T>(g_graph_data + half_vec_ind);
 
-				sdata[vecLoad]							= tmpVec.x;
-				sdata[vecLoad+MaxNumOfConstVecsInBlock]	= tmpVec.y;
-				sdata[vecLoad+2*MaxNumOfConstVecsInBlock]	= tmpVec.z;
+				sdata[loadIndex] = tmpVec;
+				//sdata[vecLoad]							= tmpVec.x;
+				//sdata[vecLoad+MaxNumOfConstVecsInBlock]	= tmpVec.y;
+				//sdata[vecLoad+2*MaxNumOfConstVecsInBlock]	= tmpVec.z;
 
-				vecLoad += numThreadsInBlock;
+				loadIndex += numThreadsInBlock;
 			}
 
 			__syncthreads();
@@ -128,7 +132,7 @@ namespace maps
 				_counter = counter;
 				_sdata = pAdjacency->_sdata;
 				_g_const_ind = pAdjacency->_g_const_ind;
-				_sharedBlockSize = pAdjacency->_MaxNumOfConstVecsInBlock;
+				_sharedBlockSize = pAdjacency->_MaxNumOfItemsInBlock;
 				_numPartRoundUp = pAdjacency->_numPartRoundUp;
 			}
 
@@ -136,15 +140,21 @@ namespace maps
 			{
 				int c_r_ind = ldg<int>(_g_const_ind+_c_ind);
 
-				unsigned int abs_c_r_ind = abs(c_r_ind)-1;
+				if (SYMMETRIC)
+				{
+					unsigned int abs_c_r_ind = abs(c_r_ind)-1;
+					float sign = ((c_r_ind>0) - 0.5f)*2.0f;
 
-				float sign = ((c_r_ind>0) - 0.5f)*2.0f;
+					_corr_half_vec = _sdata[abs_c_r_ind];
+					//_corr_half_vec.x = _sdata[abs_c_r_ind];
+					//_corr_half_vec.y = _sdata[abs_c_r_ind+_sharedBlockSize];
+					//_corr_half_vec.z = _sdata[abs_c_r_ind+2*_sharedBlockSize];
 
-				_corr_half_vec.x = _sdata[abs_c_r_ind];
-				_corr_half_vec.y = _sdata[abs_c_r_ind+_sharedBlockSize];
-				_corr_half_vec.z = _sdata[abs_c_r_ind+2*_sharedBlockSize];
+					_corr_half_vec *= sign;
+				}
+				else
+					_corr_half_vec = _sdata[c_r_ind];
 
-				_corr_half_vec *= sign;
 			}
 
 			__device__ __forceinline__ void getNext()
@@ -242,7 +252,7 @@ namespace maps
 		unsigned int _numOfConst;
 		unsigned int _numPartRoundUp;
 		const int* _g_const_ind;
-		unsigned int _MaxNumOfConstVecsInBlock;
+		unsigned int _MaxNumOfItemsInBlock;
 	};
 
 }  // namespace maps

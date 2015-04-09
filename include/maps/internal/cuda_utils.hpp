@@ -47,7 +47,13 @@ namespace maps
 	{
 		MAPS_CUDA_CHECK(cudaMalloc(d_ptr, size));
 	}
-	
+
+	static inline void CudaAllocAndClear(void** d_ptr, unsigned int size)
+	{
+		MAPS_CUDA_CHECK(cudaMalloc(d_ptr, size));
+		MAPS_CUDA_CHECK(cudaMemset(*d_ptr, 0, size));
+	}
+
 	static inline void CudaAllocAndCopy(void** d_ptr, void* h_ptr, unsigned int size)
 	{
 		CudaAlloc(d_ptr,size);

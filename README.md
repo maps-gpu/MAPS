@@ -15,6 +15,10 @@ Requirements
 
 CUDA 7.0 or higher.
 
+gflags (for command-line arguments in samples): https://github.com/gflags/gflags
+
+Google Test (for unit tests): https://github.com/google/googletest
+
 
 Installation
 ------------

@@ -1,138 +1,294 @@
-/*
- *	MAPS: GPU device level memory abstraction library
- *	Based on the paper: "MAPS: Optimizing Massively Parallel Applications 
- *	Using Device-Level Memory Abstraction"
- *	Copyright (C) 2014  Amnon Barak, Eri Rubin, Tal Ben-Nun
- *
- *	This program is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
- *	
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
- *	
- *	You should have received a copy of the GNU General Public License
- *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// MAPS - Memory Access Pattern Specification Framework
+// http://maps-gpu.github.io/
+// Copyright (c) 2015, A. Barak
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// * Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// * Neither the names of the copyright holders nor the names of its 
+//   contributors may be used to endorse or promote products derived from this
+//   software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
+#include <ctime>
+#include <chrono>
+
 #include <vector>
+#include <map>
+#include <memory>
+
+#include <gflags/gflags.h>
 
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
-#include <maps/maps.cuh>
+#include "maps/maps.cuh"
+#include "maps/multi/multi.cuh"
 
-#define DATA_SIZE 16384
-#define NUMBER_OF_BINS 256
+DEFINE_int32(width,  4096, "Image width");
+DEFINE_int32(height, 2560, "Image height");
 
-#define MIN_VAL 0.0f
-#define MAX_VAL 255.0f
+DEFINE_bool(multithreading, true, "Run a thread per device");
+DEFINE_bool(regression, true, "Perform regression tests");
+DEFINE_bool(print_values, false, "Print unequal values");
 
-#define BW 256
-#define BH 1
+#define BINS 256
 
-template<typename T, typename BinT, int BINS>
-void HistogramNaive(const T *in, size_t size, BinT *hist, const T& minVal, const T& maxVal)
+#define ITEMS_PER_THREAD_X 4
+
+DEFINE_int32(block_width, 256, "Block width to use");
+DEFINE_int32(block_height, 1, "Block height to use");
+DEFINE_int32(items_per_thread, ITEMS_PER_THREAD_X, "Number of items per thread to use");
+DEFINE_bool(exhaustive, false, "Test all block size / items per thread configurations");
+
+#ifdef _DEBUG
+DEFINE_int32(repetitions, 5, "Number of iterations for test");
+#else
+DEFINE_int32(repetitions, 50, "Number of iterations for test");
+#endif
+
+DEFINE_bool(cpu_regression, true, "Perform regression tests against CPU");
+DEFINE_int32(random_seed, -1, "Override random seed (default is current time)");
+unsigned int curtime = (unsigned int)time(NULL);
+
+void Histogram_CPU(const unsigned char *in, size_t inStride, unsigned int *out, int width, int height)
 {
-	for(size_t idx = 0; idx < size; ++idx)
-	{
-		// Compute the relevant bin and add to that
-		BinT bin = static_cast<BinT>((float)(BINS - 1) * (float)(in[idx] - minVal) / (float)(maxVal - minVal));
-		++hist[bin];
-	}
+    for (int i = 0; i < height; i++)
+    {
+        for (int j = 0; j < width; j++)
+        {
+            unsigned char val = in[inStride * i + j];
+            
+            out[val]++;
+        }
+    }
 }
 
-template<typename T, typename BinT, int BINS>
-__global__ void HistogramMAPS(const T *in, size_t size, BinT *outHist, T minVal, T maxVal)
+template<int BLOCK_WIDTH, int ITEMS_PER_THREAD>
+__global__ void HistogramMMAPS MAPS_MULTIDEF(maps::Window2D<uint8_t, BLOCK_WIDTH, 1, 0, maps::WB_ZERO, ITEMS_PER_THREAD> in, 
+                                             maps::ReductiveStaticOutput<unsigned int, BINS, BLOCK_WIDTH, ITEMS_PER_THREAD> out)
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	if (idx >= size)
-		return;
+    MAPS_MULTI_INITVARS(in, out);
 
-	// Auto-choose best histogram algorithm
-	//__shared__ typename maps::Histogram<BinT, BINS>::DevHistogram hist;
-	__shared__ maps::HistogramSharedAtomic<BinT, BINS> hist;
+    #pragma unroll
+    MAPS_FOREACH(oiter, out)
+    {
+        uint8_t value = *in.align(oiter);
+        oiter[value]++;
+    }
 
-	hist.init(outHist);
-
-	// Compute the relevant bin and add to that
-	BinT bin = static_cast<BinT>((float)(BINS - 1) * (float)(in[idx] - minVal) / (float)(maxVal - minVal));
-	hist.compute(bin);
-
-	hist.commit();
+    out.commit();
 }
 
-int main(int argc, char **argv)
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
+bool HistogramCPURegression(const unsigned int *otherResult)
 {
-	float *dev_data = NULL;
-	std::vector<unsigned int> histNaive (NUMBER_OF_BINS, 0);
-	unsigned int *dev_histMAPS = NULL;
+    if (!FLAGS_regression)
+        return true;
 
-	size_t dataSize = DATA_SIZE;
-	
-	// Create input data
-	std::vector<float> host_data (dataSize, 0);
-	for(size_t i = 0; i < dataSize; ++i)
-		host_data[i] = static_cast<float>(i % NUMBER_OF_BINS);
+    printf("Comparing with CPU...\n");
 
-	// Allocate GPU buffers
-	MAPS_CUDA_CHECK(cudaMalloc(&dev_data, sizeof(float) * dataSize));
-	MAPS_CUDA_CHECK(cudaMalloc(&dev_histMAPS, sizeof(unsigned int) * NUMBER_OF_BINS));	
-	   	
-	// Copy input data to GPU
-	MAPS_CUDA_CHECK(cudaMemcpy(dev_data, &host_data[0], sizeof(float) * dataSize, cudaMemcpyHostToDevice));
-	MAPS_CUDA_CHECK(cudaMemset(dev_histMAPS, 0, sizeof(unsigned int) * NUMBER_OF_BINS));
+    size_t width = FLAGS_width, height = FLAGS_height;
 
-	dim3 block_dims (BW, BH, 1);
-	dim3 grid_dims (maps::RoundUp(dataSize, block_dims.x), maps::RoundUp(1, block_dims.y), 1);
+    unsigned int host_hist[BINS] = { 0 };
+    maps::pinned_vector<unsigned char> host_image(width * height, 0);
 
-	// Run both versions
-	HistogramNaive<float, unsigned int, NUMBER_OF_BINS>(&host_data[0], dataSize, &histNaive[0], MIN_VAL, MAX_VAL);
+    srand((FLAGS_random_seed < 0) ? curtime : FLAGS_random_seed);
 
-	HistogramMAPS<float, unsigned int, NUMBER_OF_BINS><<<grid_dims, block_dims>>>(dev_data, dataSize, dev_histMAPS, MIN_VAL, MAX_VAL);
-
-	MAPS_CUDA_CHECK(cudaDeviceSynchronize());
-
-	// Copy and compare the results
-	std::vector<unsigned int> host_histMAPS (NUMBER_OF_BINS, 0);
-	
-	MAPS_CUDA_CHECK(cudaMemcpy(&host_histMAPS[0], dev_histMAPS, sizeof(unsigned int) * NUMBER_OF_BINS, cudaMemcpyDeviceToHost));
-
-	int numErrorsMAPS = 0;
-	float meanErrorMAPS = 0.0f;
-
-	// Do not compare the results in the outer borders
-	for(size_t i = 0; i < NUMBER_OF_BINS; ++i)
-	{
-		// Test Naive vs. MAPS
-		if(histNaive[i] != host_histMAPS[i])
-		{
-			if(numErrorsMAPS == 0)
-				printf("MAPS: First error in index %d: %d != %d\n", i, 
-						histNaive[i], host_histMAPS[i]);
-
-			numErrorsMAPS++;
-		}
-		meanErrorMAPS += fabs((float)histNaive[i] - (float)host_histMAPS[i]);
-	}
-
-	printf("Number of errors: Naive vs. MAPS = %d\n", numErrorsMAPS);
-	printf("Mean error:       Naive vs. MAPS = %f\n", meanErrorMAPS / (float)(NUMBER_OF_BINS));
-
-	// Free allocated data
-	MAPS_CUDA_CHECK(cudaFree(dev_data));
-	MAPS_CUDA_CHECK(cudaFree(dev_histMAPS));
-
-    // cudaDeviceReset must be called before exiting in order for profiling and
-    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-    cudaDeviceReset();
-
-	printf("Done!\n");
+    for (size_t i = 0; i < width * height; ++i)
+        host_image[i] = (rand() % BINS);
     
-    return 0;
+    Histogram_CPU(&host_image[0], sizeof(unsigned char) * width, host_hist, (int)width, (int)height);
+
+    int numErrors = 0;
+    for (size_t i = 0; i < BINS; ++i)
+    {
+        if (host_hist[i] != otherResult[i])
+        {
+            if (FLAGS_print_values)
+                printf("ERROR AT INDEX %d: real: %d, other: %d\n", i, 
+                       (int)host_hist[i], (int)otherResult[i]);
+            numErrors++;
+        }
+    }
+    
+    printf("Comparison %s: Errors: %d\n\n", (numErrors == 0) ? "OK" : "FAILED", numErrors);
+
+    return (numErrors == 0);
+}
+
+template<int BLOCK_WIDTH, int ITEMS_PER_THREAD>
+bool TestHistogramMultiGPU(int ngpus)
+{
+    size_t width = FLAGS_width, height = FLAGS_height;
+
+    if (width % ITEMS_PER_THREAD != 0)
+    {
+        printf("Width (%d) not multiple of items per thread (%d), skipping...\n", (int)width, ITEMS_PER_THREAD);
+        return true;
+    }
+    if (ITEMS_PER_THREAD * BLOCK_WIDTH > width)
+    {
+        printf("ITEMS PER THREAD * BLOCK WIDTH is too wide, skipping...\n");
+        return true;
+    }
+
+    unsigned int host_hist[BINS] = { 0 };
+    maps::pinned_vector<unsigned char> host_image(width * height, 0);
+
+    srand((FLAGS_random_seed < 0) ? curtime : FLAGS_random_seed);
+
+    for (size_t i = 0; i < width * height; ++i)
+        host_image[i] = (rand() % BINS);
+
+    // Create GPU list
+    int num_gpus;
+    MAPS_CUDA_CHECK(cudaGetDeviceCount(&num_gpus));
+    std::vector<unsigned int> gpuids;
+    for (int i = 0; i < ngpus; ++i)
+        gpuids.push_back(i % num_gpus);
+
+    // Create scheduler
+    maps::multi::Scheduler sched(gpuids);
+
+    if (!FLAGS_multithreading)
+        sched.DisableMultiThreading();
+
+    // Create data
+    maps::multi::Matrix<unsigned char> image(width, height);
+    maps::multi::Vector<unsigned int> hist((size_t)BINS);
+
+    dim3 block_dims(BLOCK_WIDTH, FLAGS_block_height, 1);
+    dim3 grid_dims(maps::RoundUp((int)width / ITEMS_PER_THREAD, block_dims.x), maps::RoundUp((int)height, block_dims.y), 1);
+
+    maps::multi::AnalyzeCall(sched, grid_dims, block_dims,
+                             maps::multi::Window2D<uint8_t, BLOCK_WIDTH, 1, 0, maps::WB_ZERO, ITEMS_PER_THREAD>(image),
+                             maps::multi::ReductiveStaticOutput<unsigned int, BINS, BLOCK_WIDTH, ITEMS_PER_THREAD>(hist));
+
+    image.Bind(&host_image[0], sizeof(unsigned char) * width);
+    hist.Bind(host_hist, BINS * sizeof(unsigned int));
+
+    maps::multi::Fill(sched, hist);
+
+    // Clear histogram and invalidate buffer
+    maps::multi::Fill(sched, hist);
+    sched.Invalidate(image);
+
+    for (int i = 0; i < num_gpus; i++)
+    {
+        MAPS_CUDA_CHECK(cudaSetDevice(i));
+        MAPS_CUDA_CHECK(cudaDeviceSynchronize());
+    }
+    MAPS_CUDA_CHECK(cudaSetDevice(0));    
+    auto t1 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < FLAGS_repetitions; i++)
+    {
+        maps::multi::Invoke(sched, HistogramMMAPS<BLOCK_WIDTH, ITEMS_PER_THREAD>, grid_dims, block_dims,
+                            maps::multi::Window2D<unsigned char, BLOCK_WIDTH, 1, 0, maps::WB_ZERO, ITEMS_PER_THREAD>(image),
+                            maps::multi::ReductiveStaticOutput<unsigned int, BINS, BLOCK_WIDTH, ITEMS_PER_THREAD>(hist));
+    }
+
+    sched.WaitAll();
+    for (int i = 0; i < num_gpus; i++)
+    {
+        MAPS_CUDA_CHECK(cudaSetDevice(i));
+        MAPS_CUDA_CHECK(cudaDeviceSynchronize());
+    }
+    auto t2 = std::chrono::high_resolution_clock::now();
+
+    printf("Histogram (MAPS-Multi): %f ms\n",
+           std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() / 1000.0f / FLAGS_repetitions);
+
+    // Copy output vectors from GPUs to host memory, aggregating information in the process
+    maps::multi::Gather(sched, hist);
+
+    // Account for histogram being incremental (the values have been incremented REPETITIONS times)
+    for (int i = 0; i < BINS; ++i)
+        host_hist[i] /= FLAGS_repetitions;
+
+    return HistogramCPURegression(host_hist);
+}
+
+#define TEST(blockwidth, items) do { \
+    if(FLAGS_block_width == blockwidth && FLAGS_items_per_thread == items) \
+        return TestHistogramMultiGPU<blockwidth, items>(ngpus);\
+    if(FLAGS_exhaustive)\
+        overall &= TestHistogramMultiGPU<blockwidth, items>(ngpus);\
+} while(0)
+
+#define TESTALL()   do {        \
+    TEST(16, 1);              \
+    TEST(16, 2);              \
+    TEST(16, 4);              \
+    TEST(16, 8);              \
+    TEST(16, 16);             \
+    TEST(32, 1);              \
+    TEST(32, 2);              \
+    TEST(32, 4);              \
+    TEST(32, 8);              \
+    TEST(32, 16);             \
+    TEST(64, 1);              \
+    TEST(64, 2);              \
+    TEST(64, 4);              \
+    TEST(64, 8);              \
+    TEST(64, 16);             \
+    TEST(128, 1);             \
+    TEST(128, 2);             \
+    TEST(128, 4);             \
+    TEST(128, 8);             \
+    TEST(128, 16);            \
+    TEST(192, 1);             \
+    TEST(192, 2);             \
+    TEST(192, 4);             \
+    TEST(192, 8);             \
+    TEST(192, 16);            \
+    TEST(256, 1);             \
+    TEST(256, 2);             \
+    TEST(256, 4);             \
+    TEST(256, 8);             \
+    TEST(256, 16);            \
+    TEST(512, 1);             \
+    TEST(512, 2);             \
+    TEST(512, 4);             \
+    TEST(512, 8);             \
+    TEST(512, 16);            \
+} while(0)
+
+bool TestHistogramMAPSMulti(int ngpus)
+{
+    bool overall = true;
+
+    TESTALL();
+
+    if (!FLAGS_exhaustive)
+    {
+        printf("Test not compiled!\n");
+        overall = false;
+    }
+    return overall;
 }

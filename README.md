@@ -1,18 +1,19 @@
-MAPS: Device-Level GPU Memory Abstraction Library
-=================================================
+MAPS: GPU Optimization and Memory Abstraction Framework
+=======================================================
 
 MAPS is a header-only C++ CUDA template library for automatic optimization of 
-GPU kernels. It uses common memory access patterns to provide near-optimal 
-performance. 
+GPU kernels and transparent partitioning of multi-GPU tasks. 
+It uses memory access patterns to provide near-optimal 
+performance while maintaining code simplicity.
 
-For more information, see the library website at:
-http://www.cs.huji.ac.il/~talbn/maps/
+For more information, see the framework website at:
+http://www.cs.huji.ac.il/project/maps/
 
 
 Requirements
 ------------
 
-CUDA.
+CUDA 7.0 or higher.
 
 
 Installation
@@ -20,7 +21,7 @@ Installation
 
 To compile code with MAPS, use the includes under the "include" directory.
 
-You can either include specific header files, or include MAPS using the 
+It is generally recommended to include MAPS using the 
 all-inclusive header (from .cu files only):
 
 ``` cpp

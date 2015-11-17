@@ -1,259 +1,279 @@
-/*
- *	MAPS: GPU device level memory abstraction library
- *	Based on the paper: "MAPS: Optimizing Massively Parallel Applications 
- *	Using Device-Level Memory Abstraction"
- *	Copyright (C) 2014  Amnon Barak, Eri Rubin, Tal Ben-Nun
- *
- *	This program is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
- *	
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
- *	
- *	You should have received a copy of the GNU General Public License
- *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// MAPS - Memory Access Pattern Specification Framework
+// http://maps-gpu.github.io/
+// Copyright (c) 2015, A. Barak
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// * Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// * Neither the names of the copyright holders nor the names of its 
+//   contributors may be used to endorse or promote products derived from this
+//   software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef __MAPS_ADJACENCY_CUH_
 #define __MAPS_ADJACENCY_CUH_
 
-#include <maps/index_mappers/graph_mapper.hpp>
+#include "../internal/common.h"
+#include "internal/io_common.cuh"
+#include "internal/io_globalread.cuh"
 
 namespace maps
 {
+    template <typename TWeight, typename TValue>
+    class Adjacency : public IContainerComposition
+    {
+    public:
+        uint2*            m_nodeEdgesCountOffsetMap;
+        maps::TypedInputContainer<TWeight>        m_edgesWeightList;
+        TValue*            m_nodesValueList;
 
-	template <typename T, bool SYMMETRIC = true>
-	class Adjacency
-	{
-	public:
-		float *_sdata;
+        uint2*            m_blockEdgesCountOffsetMap;
+        maps::TypedInputContainer<unsigned int>    m_blockEdgesIndexList;
+        int*            m_nodeNodesSMemIndexList;
 
-		__device__ Adjacency() { }
+    private:
+        unsigned int m_numNodesRoundUp;
+        unsigned int m_maxNumOfEdgesInBlock;
+        size_t m_maxNodeRank;
+        size_t m_dsmemOffset; // dynamic shared memory offset
 
-		__device__ void init(int localThreadInd, int numThreadsInBlock,  const T *g_graphData, float *sdata,
-			const GraphMapper::gpuData GraphGPUData, /*const uint2* g_constVecsBlockData, const unsigned int* g_data_block_ind,*/
-			const unsigned int MaxNumOfItemsInBlock, const int &globalIndex,/*const uint2* g_num_const, const int* g_const_ind,*/ const unsigned int &numPartRoundUp)
-		{
-			_sdata = sdata;
-			loadGraphDataToSharedMem(localThreadInd, numThreadsInBlock, _sdata, g_graphData, GraphGPUData._d_b_c_data_map, GraphGPUData._d_b_c_ind_map, MaxNumOfItemsInBlock);
-			_globalIndex = globalIndex;
-			_numOfConst = GraphGPUData._d_p_c_count_map[globalIndex].x;
-			_g_const_ind = GraphGPUData._d_p_c_s_ind_map;
-			_numPartRoundUp = numPartRoundUp;
+        uint2 m_edge_count_offset_pair;
+        TValue *m_sdata;
 
-			_MaxNumOfItemsInBlock = MaxNumOfItemsInBlock;		
-		}
+    public:
+        enum
+        {
+            SYNC_AFTER_INIT = true,
+        };
 
-		// TODO(later): Implement chunk-based computations
-		//__device__ void initChunky(const int &localThreadInd, const int &numThreadsInBlock, const T *g_corr_half_vec , float *sdata,const uint2* g_constVecsBlockData, const unsigned int* g_half_vec_block_ind, const unsigned int chunkSize)
-		//{
-		//	m_localThreadInd = localThreadInd;
-		//	m_numThreadsInBlock = numThreadsInBlock;
-		//	m_g_corr_half_vec = g_corr_half_vec;
-		//	m_sdata = sdata;
-		//	m_g_constVecsBlockData = g_constVecsBlockData;
-		//	m_g_half_vec_block_ind = g_half_vec_block_ind;
-		//	m_chunkSize = chunkSize;
-		//	m_chunkNum = 0;
+        typedef SharedMemoryArray <TValue, DYNAMIC_SMEM> SharedData;
 
-		//	loadGraphDataChunkToSharedMem(m_localThreadInd, m_numThreadsInBlock, m_sdata, m_g_corr_half_vec ,m_g_constVecsBlockData, m_g_half_vec_block_ind, m_chunkNum, m_chunkSize);
+        dim3 grid_dims; // Actual grid dimensions, for block index computation
+        unsigned int block_offset;
+        uint3 blockId;
 
-		//	m_chunkNum ++;
-		//}
+        __host__ __device__ Adjacency(
+          uint2 *nodeEdgesCountOffsetMap,
+          const TypedInputContainer<TWeight>& edgesWeightList,
+          TValue *nodesValueList,
+          uint2 *blockEdgesCountOffsetMap,
+          const TypedInputContainer<unsigned int>& blockEdgesIndexList,
+          int *nodeNodesSMemIndexList,
+          unsigned int numNodesRoundUp,
+          unsigned int maxNumOfEdgesInBlock,
+          size_t maxNodeRank, 
+          size_t dsmemOffset) 
+            :
+          m_nodeEdgesCountOffsetMap(nodeEdgesCountOffsetMap),
+          m_edgesWeightList(edgesWeightList),
+          m_nodesValueList(nodesValueList),
+          
+          m_blockEdgesCountOffsetMap(blockEdgesCountOffsetMap),
+          m_blockEdgesIndexList(blockEdgesIndexList),
+          m_nodeNodesSMemIndexList(nodeNodesSMemIndexList),
+          
+          m_numNodesRoundUp(numNodesRoundUp),
+          m_maxNumOfEdgesInBlock(maxNumOfEdgesInBlock),
+          m_maxNodeRank(maxNodeRank),
+          m_dsmemOffset(dsmemOffset)
+        {
 
-		//__device__ void loadNextChunk()
-		//{
-		//	loadGraphDataChunkToSharedMem(m_localThreadInd, m_numThreadsInBlock, m_sdata, m_g_corr_half_vec ,m_g_constVecsBlockData, m_g_half_vec_block_ind, m_chunkNum, m_chunkSize);
+        }
 
-		//	m_chunkNum ++;
-		//}
+        __device__ __forceinline__ void init_async(SharedData& sdata)
+        {
+            if (block_offset > 0)
+            {
+                unsigned int __realBlockIdx;
+                asm("mov.b32   %0, %ctaid.x;" : "=r"(__realBlockIdx));
+                __realBlockIdx += block_offset;
+              
+                blockId.x = __realBlockIdx % grid_dims.x;
+                blockId.y = (__realBlockIdx / grid_dims.x) % grid_dims.y;
+                blockId.z = ((__realBlockIdx / grid_dims.x) / grid_dims.y);
+            }
+            else
+                blockId = blockIdx;
+            
+            sdata.init(m_dsmemOffset);
+            m_sdata = sdata.smem;
+            
+            // Load nodes values according to pre-processed info
+            loadGraphDataToSharedMem();    
+          }
 
-		__device__ __forceinline__ void loadGraphDataToSharedMem(int localThreadInd, int numThreadsInBlock, float *sdata, const T *g_graph_data ,const uint2* g_constIndexBlockData, const unsigned int* g_graph_data_block_ind, const unsigned int MaxNumOfItemsInBlock)
-		{
-			// first load all needed data to shared memory and then use them
-			int loadIndex = localThreadInd;
+          __device__ __forceinline__ void init_async_postsync()
+          {
+              // TODO: Operate w.r.t. 3D blocks
+              // Load edge info
+              m_edge_count_offset_pair = 
+                m_nodeEdgesCountOffsetMap[threadIdx.x + blockIdx.x*blockDim.x];
+          }
 
-			uint2 numOfItemsForBlock = g_constIndexBlockData[blockIdx.x];
+          __device__ __forceinline__ void init(SharedData& sdata)
+          {
+              init_async(sdata);
+              __syncthreads();
+              init_async_postsync();
+          }
 
-			while (loadIndex < numOfItemsForBlock.x)
-			{
-				int half_vec_ind = ldg<unsigned int>(g_graph_data_block_ind + numOfItemsForBlock.y + loadIndex);
-				T tmpVec = ldg<T>(g_graph_data + half_vec_ind);
+          __device__ __forceinline__ void loadGraphDataToSharedMem()
+          {
+              // First load all needed data to shared memory and then use them
+              int loadIndex = threadIdx.x;
 
-				sdata[loadIndex] = tmpVec;
-				//sdata[vecLoad]							= tmpVec.x;
-				//sdata[vecLoad+MaxNumOfConstVecsInBlock]	= tmpVec.y;
-				//sdata[vecLoad+2*MaxNumOfConstVecsInBlock]	= tmpVec.z;
+              uint2 numOfItemsForBlock = m_blockEdgesCountOffsetMap[blockIdx.x];
+              
+              while (loadIndex < numOfItemsForBlock.x)
+              {
 
-				loadIndex += numThreadsInBlock;
-			}
+                  int gmemIndex;
+                  GlobalRead<int, GR_DISTINCT>::Read1D(
+                      (int *)m_blockEdgesIndexList.GetTypedPtr(),  
+                      -m_blockEdgesIndexList.GetOffset() + 
+                      numOfItemsForBlock.y + loadIndex, gmemIndex);
+                  GlobalRead<TValue, GR_DISTINCT>::Read1D(
+                      m_nodesValueList, gmemIndex, m_sdata[loadIndex]);
 
-			__syncthreads();
-		}
+                  loadIndex += blockDim.x;
+              }
+          }
 
-		// TODO(later): Implement chunk-based computations
-		//__device__ void loadGraphDataChunkToSharedMem(int localThreadInd, int numThreadsInBlock, float *sdata, const T *g_corr_half_vec ,const uint2* g_constVecsBlockData, const unsigned int* g_half_vec_block_ind, const unsigned int chunkNum, const unsigned int chunkSize)
-		//{
-		//	// first load all needed data to shared memory and then use them
-		//	int vecLoad = localThreadInd;
-		//	const int chunkOffset = chunkNum*chunkSize;
+          struct edge_data
+          {
+              TWeight edge_weight;
+              TValue adjacent_node_value;
+          };
 
-		//	uint2 constVecsBlockData = g_constVecsBlockData[blockIdx.x];
+          class iterator
+          {
+          private:
+            TWeight* m_edgesWeightListPtr;
+            int64_t m_edgesWeightListOffset;
+            unsigned int m_index;
+            
+            unsigned int m_gmemIndex;
+            const int* m_nodeNodesSMemIndexList;
+            
+            TValue *m_sdata;
+            
+          public:
+            __device__ iterator() { };
+            
+            __device__ __forceinline__ iterator(const Adjacency *adjacency, 
+                                                const unsigned int index)
+                : m_index(index)
+            {
+                m_edgesWeightListPtr = adjacency->m_edgesWeightList.GetTypedPtr();
+                m_edgesWeightListOffset = adjacency->m_edgesWeightList.GetOffset();
 
-		//	while (vecLoad + chunkOffset < constVecsBlockData.x && vecLoad < chunkSize)
-		//	{
-		//		int half_vec_ind = g_half_vec_block_ind[constVecsBlockData.y+vecLoad];
-		//		T tmpVec = g_corr_half_vec[half_vec_ind];
+                m_gmemIndex = blockIdx.x * blockDim.x * adjacency->m_maxNodeRank + threadIdx.x;
+                m_nodeNodesSMemIndexList = adjacency->m_nodeNodesSMemIndexList;
 
+                m_sdata = adjacency->m_sdata;
+            }
 
-		//		sdata[vecLoad]							= tmpVec.x;
-		//		sdata[vecLoad+chunkSize]	= tmpVec.y;
-		//		sdata[vecLoad+2*chunkSize]	= tmpVec.z;
+            __device__ __forceinline__ void next()
+            {
+                m_gmemIndex += blockDim.x;
+                ++m_index;
+            }
 
-		//		vecLoad += numThreadsInBlock;
-		//	}
+            __device__ __forceinline__ edge_data operator* ()
+            {
+                edge_data edgeData;
 
-		//	__syncthreads();
-		//}
+                // Load shared memory index from the preprocessed global memory
+                int smemIndex;
+                GlobalRead<int, GR_DISTINCT>::Read1D(
+                    m_nodeNodesSMemIndexList, m_gmemIndex, smemIndex);
 
-		class iterator
-		{
-		public:
-			__device__ iterator(){};
+                // Load the adjacent node value from smem
+                edgeData.adjacent_node_value = m_sdata[smemIndex];
 
-			__device__ __forceinline__ iterator(const Adjacency *pAdjacency, const unsigned int counter)//, const uint2* g_num_const, const int* g_const_ind, const unsigned int &MaxNumOfConstVecsInBlock, const unsigned int &numPartRoundUp)
-			{
-				_index = pAdjacency->_localThreadInd;
-				_c_ind = pAdjacency->_globalIndex;
-				_counter = counter;
-				_sdata = pAdjacency->_sdata;
-				_g_const_ind = pAdjacency->_g_const_ind;
-				_sharedBlockSize = pAdjacency->_MaxNumOfItemsInBlock;
-				_numPartRoundUp = pAdjacency->_numPartRoundUp;
-			}
+                // Load the edge weight from global memory
+                edgeData.edge_weight = m_edgesWeightListPtr[m_index - m_edgesWeightListOffset];
 
-			__device__ __forceinline__ void loadData()
-			{
-				int c_r_ind = ldg<int>(_g_const_ind+_c_ind);
+                return edgeData;
+            }
 
-				if (SYMMETRIC)
-				{
-					unsigned int abs_c_r_ind = abs(c_r_ind)-1;
-					float sign = ((c_r_ind>0) - 0.5f)*2.0f;
+            __device__ __forceinline__ iterator operator++() // Prefix
+            {
+                next();
+                return *this;
+            }
 
-					_corr_half_vec = _sdata[abs_c_r_ind];
-					//_corr_half_vec.x = _sdata[abs_c_r_ind];
-					//_corr_half_vec.y = _sdata[abs_c_r_ind+_sharedBlockSize];
-					//_corr_half_vec.z = _sdata[abs_c_r_ind+2*_sharedBlockSize];
+            __device__ __forceinline__ iterator operator++(int) // Postfix
+            {
+                iterator temp(*this);
+                next();
+                return temp;
+            }
 
-					_corr_half_vec *= sign;
-				}
-				else
-					_corr_half_vec = _sdata[c_r_ind];
+            __device__ __forceinline__ void operator=(const iterator &a)
+            {
+                m_edgesWeightListPtr = a.m_edgesWeightListPtr;
+                m_edgesWeightListOffset = a.m_edgesWeightListOffset;
+                m_index = a.m_index;
 
-			}
+                m_gmemIndex = a.m_gmemIndex;
+                m_nodeNodesSMemIndexList = a.m_nodeNodesSMemIndexList;
 
-			__device__ __forceinline__ void getNext()
-			{
-				_c_ind+=_numPartRoundUp;
-				_counter++;
-			}
+                m_sdata = a.m_sdata;
+            }
 
-			__device__ __forceinline__ T operator* ()
-			{
-				loadData();
-				return _corr_half_vec;
-			}
+            __device__ __forceinline__ bool operator==(const iterator &a)
+            {
+                return m_index == a.m_index;
+            }
 
-			__device__ __forceinline__ iterator operator++() // Prefix
-			{
-				getNext();
-				return *this;
-			}
+            __device__ __forceinline__ bool operator!=(const iterator &a)
+            {
+                return m_index != a.m_index;
+            }
 
-			__device__ __forceinline__ iterator operator++(int) // Postfix
-			{
-				iterator temp(*this);
-				getNext();
-				return temp;
-			}
+        }; // end of class iterator
 
-			__device__ __forceinline__ void operator=(const iterator &a)
-			{
-				_corr_half_vec = a._corr_half_vec;
-				_index = a._index;
-				_c_ind = a._c_ind;
-				_counter = a._counter;
-				_sdata = a._sdata;
-				_g_const_ind = a._g_const_ind;
-				_MaxNumOfConstVecsInBlock = a._MaxNumOfConstVecsInBlock;
-				_numPartRoundUp = a._numPartRoundUp;
-				_sharedBlockSize = a._sharedBlockSize;
-			}
+        /**
+        * @brief Creates a thread-level iterator that points to the beginning 
+        * of the current chunk.
+        * @return Thread-level iterator.
+        */
+        __device__ __forceinline__ iterator begin() const
+        {
+            return iterator(this, m_edge_count_offset_pair.y);
+        }
 
-			__device__ __forceinline__ bool operator==(const iterator &a)
-			{
-				return _counter == a._counter;
-			}
+        /**
+        * @brief Creates a thread-level iterator that points to the end of the 
+        * current chunk.
+        * @return Thread-level iterator.
+        */
+        __device__ __forceinline__ iterator end() const
+        {
+            return iterator(this, m_edge_count_offset_pair.y + 
+                                  m_edge_count_offset_pair.x);
+        }
 
-			__device__ __forceinline__ bool operator!=(const iterator &a)
-			{
-				return _counter != a._counter;
-			}
-
-			T _corr_half_vec;
-			unsigned int _c_ind;
-		protected:
-			unsigned int _index;
-			unsigned int _sharedBlockSize;
-			unsigned int _numPartRoundUp;
-			unsigned int _counter;
-			const int* _g_const_ind;
-			unsigned int _MaxNumOfConstVecsInBlock;
-
-			float *_sdata;
-		}; // end of class iterator
-
-		/**
-		 * Creates a thread-level iterator that points to the beginning of the current chunk.
-		 * @return Thread-level iterator.
-		 */
-		__device__ __forceinline__ iterator begin() const
-		{
-			iterator itBegin(this, 0);
-			//itBegin.loadData();
-			return itBegin;
-		}
-
-		/**
-		 * Creates a thread-level iterator that points to the end of the current chunk.
-		 * @return Thread-level iterator.
-		 */
-		__device__ __forceinline__ iterator end() const
-		{
-			return iterator(this, _numOfConst);
-		}
-
-	protected:
-		int _localThreadInd;
-		int _numThreadsInBlock;
-		const T *_g_corr_half_vec;
-		const uint2* _g_constVecsBlockData;
-		const unsigned int* _g_half_vec_block_ind;
-		unsigned int _chunkSize;
-		unsigned int _chunkNum;
-
-		// iterator data
-		unsigned int _globalIndex;
-		unsigned int _numOfConst;
-		unsigned int _numPartRoundUp;
-		const int* _g_const_ind;
-		unsigned int _MaxNumOfItemsInBlock;
-	};
+        // TODO(later): aligned iterators
+    };
 
 }  // namespace maps
 

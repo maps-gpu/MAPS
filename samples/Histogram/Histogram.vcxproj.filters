@@ -1,67 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="maps">
-      <UniqueIdentifier>{ab6cd443-9a62-4bb0-84e5-4b60b2a2e52c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="maps\input containers">
-      <UniqueIdentifier>{5cd6a2a1-d675-4774-8ce7-2b8c76296837}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="maps\algorithms">
-      <UniqueIdentifier>{3d0db807-5b80-4e8d-8fbd-b7afb8623bf3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="maps\index mappers">
-      <UniqueIdentifier>{0485c73f-2389-4ff8-a4a6-b1653b6873de}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="maps\internal">
-      <UniqueIdentifier>{b22fffad-66ec-4ff3-b622-fce41d406046}</UniqueIdentifier>
-    </Filter>
+    <CudaCompile Include="histogram.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\maps\maps.cuh">
-      <Filter>maps</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\input_containers\adjacency.cuh">
-      <Filter>maps\input containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\input_containers\block1D.cuh">
-      <Filter>maps\input containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\input_containers\block2D.cuh">
-      <Filter>maps\input containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\input_containers\permutation.cuh">
-      <Filter>maps\input containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\input_containers\traversal.cuh">
-      <Filter>maps\input containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\input_containers\window1D.cuh">
-      <Filter>maps\input containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\input_containers\window2D.cuh">
-      <Filter>maps\input containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\algorithms\histogram.cuh">
-      <Filter>maps\algorithms</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\algorithms\reduction.cuh">
-      <Filter>maps\algorithms</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\index_mappers\graph_mapper.hpp">
-      <Filter>maps\index mappers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\internal\common.cuh">
-      <Filter>maps\internal</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\internal\texref.cuh">
-      <Filter>maps\internal</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\maps\internal\type_traits.hpp">
-      <Filter>maps\internal</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="Histogram.cu" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
 </Project>

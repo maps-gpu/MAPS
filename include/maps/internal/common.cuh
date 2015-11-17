@@ -1,147 +1,213 @@
-/*
- *	MAPS: GPU device level memory abstraction library
- *	Based on the paper: "MAPS: Optimizing Massively Parallel Applications 
- *	Using Device-Level Memory Abstraction"
- *	Copyright (C) 2014  Amnon Barak, Eri Rubin, Tal Ben-Nun
- *
- *	This program is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
- *	
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
- *	
- *	You should have received a copy of the GNU General Public License
- *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// MAPS - Memory Access Pattern Specification Framework
+// http://maps-gpu.github.io/
+// Copyright (c) 2015, A. Barak
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// * Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// * Neither the names of the copyright holders nor the names of its 
+//   contributors may be used to endorse or promote products derived from this
+//   software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef __MAPS_COMMON_CUH_
 #define __MAPS_COMMON_CUH_
 
 #include <cuda_runtime.h>
 #include <iterator>
+#include "common.h"
 
 namespace maps
 {
-	/**
-	 * @brief Determines the behavior when accessing data beyond the 
-	 *        dimensions of the input data.
-	 */
-	enum BorderBehavior
-	{
-		WB_NOCHECKS,	///< Assume input is allocated beyond the boundaries and do not perform the checks.
-		WB_ZERO,		///< Return a constant value of T(0).
-		WB_COPY,		///< Copy the closest value at the border.
-		WB_WRAP,		///< Wrap the results around the input data.
-	};
-	
-	// The use of enum ensures compile-time evaluation (pre-C++11 "constexpr").
-	enum
-	{
-		/// @brief If given as template parameter, determines shared memory size at runtime
-		DYNAMIC_SMEM = 0,
-	};
-
-	template <typename T>
-	static __host__ __device__ inline T Clamp(const T& value, const T& minValue, const T& maxValue)
-	{
-		if(value < minValue)
-			return minValue;
-		if(value > maxValue)
-			return maxValue;
-		return value;
-	}
-
-	template<typename T>
-	__device__ __forceinline__ T ldg(const T* ptr) 
-	{
-#if __CUDA_ARCH__ >= 350
-		return __ldg(ptr);
+    template <typename T>
+    static __device__ __forceinline__ T LDG(T *ptr)
+    {
+#if (__CUDA_ARCH__ >= 320) // Kepler-based devices and above
+        return __ldg(ptr);
 #else
-		return *ptr;
+        return *ptr;
 #endif
-	}
-	
-	/// @brief Dynamic shared memory wrapper for general use.
-	template<typename T>
-	struct DynamicSharedMemory
-	{
-		ptrdiff_t m_offset;
-		
-		/**
-		 * @brief Initializes dynamic shared memory pointer with offset.
-		 * @param offset The offset (in bytes) where this buffer starts.
-		 */
-		__device__ __forceinline__ void init(ptrdiff_t offset)
-		{
-			m_offset = offset;
-		}
+    }
+    
+    /// @brief Dynamic shared memory wrapper for general use.
+    template<typename T>
+    struct DynamicSharedMemory
+    {
+        ptrdiff_t m_offset;
+        
+        /**
+         * @brief Initializes dynamic shared memory pointer with offset.
+         * @param offset The offset (in bytes) where this buffer starts.
+         */
+        __device__ __forceinline__ void init(ptrdiff_t offset)
+        {
+            m_offset = offset;
+        }
 
-		__device__ __forceinline__ T *ptr()
-		{
-			extern __shared__ unsigned char __smem[];
-			return (T *)(__smem + m_offset);
-		}
+        __device__ __forceinline__ T *ptr()
+        {
+            extern __shared__ unsigned char __smem[];
+            return (T *)(__smem + m_offset);
+        }
 
-		__device__ __forceinline__ const T *ptr() const
-		{
-			extern __shared__ unsigned char __smem[];
-			return (const T *)(__smem + m_offset);
-		}
-	};
+        __device__ __forceinline__ const T *ptr() const
+        {
+            extern __shared__ unsigned char __smem[];
+            return (const T *)(__smem + m_offset);
+        }
+    };
 
-	/**
-	 * @brief A shared-memory array wrapper that can allocate both static 
-	 *        and dynamic shared memory. 
-	 * 
-	 * @note The struct must be designated "__shared__" on declaration,
-	 *       or part of a shared class.
-	 */
-	template<typename T, size_t ARRAY_SIZE = DYNAMIC_SMEM>
-	struct SharedMemoryArray
-	{
-		T smem[ARRAY_SIZE];
+    /**
+     * @brief A shared-memory array wrapper that can allocate both static 
+     *        and dynamic shared memory. 
+     * 
+     * @note The struct must be designated "__shared__" on declaration,
+     *       or part of a shared class.
+     */
+    template<typename T, size_t ARRAY_SIZE = DYNAMIC_SMEM>
+    struct SharedMemoryArray
+    {
+        T smem[ARRAY_SIZE];
 
-		__device__ __forceinline__ void init(ptrdiff_t offset = 0)
-		{
-			// Do nothing
-		}
-	};
+        __device__ __forceinline__ void init(ptrdiff_t offset = 0)
+        {
+            // Do nothing
+        }
+    };
 
-	// Specialization for dynamic shared memory
-	template<typename T>
-	struct SharedMemoryArray<T, 0>
-	{		
-		T *smem;
+    // Specialization for dynamic shared memory
+    template<typename T>
+    struct SharedMemoryArray<T, 0>
+    {        
+        T *smem;
 
-		__device__ __forceinline__ void init(ptrdiff_t offset = 0)
-		{
-			extern __shared__ unsigned char __smem[];
-			smem = (T *)(__smem + offset);
-		}
-	};
+        __device__ __forceinline__ void init(ptrdiff_t offset = 0)
+        {
+            extern __shared__ unsigned char __smem[];
+            smem = (T *)(__smem + offset);
+        }
+    };
+
+    namespace internal
+    {
+        static __device__ __forceinline__ bool __NextChunkAsync()
+        {
+            return false;
+        }
+
+        template <typename T>
+        static __device__ __forceinline__ bool __NextChunkAsync(T& container)
+        {
+            container.nextChunkAsync();
+            return T::SYNC_AFTER_NEXTCHUNK;
+        }
+
+        template <typename First, typename... Rest>
+        static __device__ __forceinline__ bool __NextChunkAsync(First& first, Rest&... rest)
+        {
+            first.nextChunkAsync();
+            return __NextChunkAsync(rest...) || First::SYNC_AFTER_NEXTCHUNK;
+        }
+    }  // namespace internal
+
+    template <typename... Args>
+    static __device__ __forceinline__ void NextChunkAll(Args&... args) {
+        __syncthreads();
+        bool bSync = internal::__NextChunkAsync(args...);
+        if(bSync)
+            __syncthreads();
+    }    
 
 
-	// Static assertions
-#if (_MSC_VER >= 1600) || (__cplusplus >= 201103L)
-	#define MAPS_STATIC_ASSERT(cond, msg) static_assert(cond, msg)
-#else
-	#ifdef __MAPS_CAT
-	#error Using disallowed macro name __MAPS_CAT
-	#endif
-	#ifdef __MAPS_CAT_
-	#error Using disallowed macro name __MAPS_CAT_
-	#endif
+    // Helper macros for MAPS_INIT
+    #define _MI0()
+  
+    #define _MI1(arg1)                                                   \
+            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
+            arg1.init_async(arg1##_sdata);                               \
+            if(decltype(arg1)::SYNC_AFTER_INIT)                          \
+                __syncthreads();                                         \
+            arg1.init_async_postsync();
 
-	// Workaround for static assertions pre-C++11
-	#define __MAPS_CAT_(a, b) a ## b
-	#define __MAPS_CAT(a, b) __MAPS_CAT_(a, b)
-	#define MAPS_STATIC_ASSERT(cond, msg) typedef int __MAPS_CAT(maps_static_assert, __LINE__)[(cond) ? 1 : -1]
-#endif
+    #define _MI2(arg1, arg2)                                             \
+            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
+            __shared__ typename decltype(arg2)::SharedData arg2##_sdata; \
+            arg1.init_async(arg1##_sdata);                               \
+            arg2.init_async(arg2##_sdata);                               \
+            if(decltype(arg1)::SYNC_AFTER_INIT || decltype(arg2)::SYNC_AFTER_INIT) \
+                __syncthreads();                                         \
+            arg1.init_async_postsync();                                  \
+            arg2.init_async_postsync();
 
+    #define _MI3(arg1, arg2, arg3)                                       \
+            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
+            __shared__ typename decltype(arg2)::SharedData arg2##_sdata; \
+            __shared__ typename decltype(arg3)::SharedData arg3##_sdata; \
+            arg1.init_async(arg1##_sdata);                               \
+            arg2.init_async(arg2##_sdata);                               \
+            arg3.init_async(arg3##_sdata);                               \
+            if(decltype(arg1)::SYNC_AFTER_INIT || decltype(arg2)::SYNC_AFTER_INIT || decltype(arg3)::SYNC_AFTER_INIT) \
+                __syncthreads();                                         \
+            arg1.init_async_postsync();                                  \
+            arg2.init_async_postsync();                                  \
+            arg3.init_async_postsync();
+
+    #define _MI4(arg1, arg2, arg3, arg4)                                 \
+            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
+            __shared__ typename decltype(arg2)::SharedData arg2##_sdata; \
+            __shared__ typename decltype(arg3)::SharedData arg3##_sdata; \
+            __shared__ typename decltype(arg4)::SharedData arg4##_sdata; \
+            arg1.init_async(arg1##_sdata);                               \
+            arg2.init_async(arg2##_sdata);                               \
+            arg3.init_async(arg3##_sdata);                               \
+            arg4.init_async(arg4##_sdata);                               \
+            if(decltype(arg1)::SYNC_AFTER_INIT || decltype(arg2)::SYNC_AFTER_INIT || decltype(arg3)::SYNC_AFTER_INIT || decltype(arg4)::SYNC_AFTER_INIT) \
+                __syncthreads();                                         \
+            arg1.init_async_postsync();                                  \
+            arg2.init_async_postsync();                                  \
+            arg3.init_async_postsync();                                  \
+            arg4.init_async_postsync();
+
+    #define _MI5(arg1, arg2, arg3, arg4, arg5)                           \
+            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
+            __shared__ typename decltype(arg2)::SharedData arg2##_sdata; \
+            __shared__ typename decltype(arg3)::SharedData arg3##_sdata; \
+            __shared__ typename decltype(arg4)::SharedData arg4##_sdata; \
+            __shared__ typename decltype(arg5)::SharedData arg5##_sdata; \
+            arg1.init_async(arg1##_sdata);                               \
+            arg2.init_async(arg2##_sdata);                               \
+            arg3.init_async(arg3##_sdata);                               \
+            arg4.init_async(arg4##_sdata);                               \
+            arg5.init_async(arg5##_sdata);                               \
+            if(decltype(arg1)::SYNC_AFTER_INIT || decltype(arg2)::SYNC_AFTER_INIT || decltype(arg3)::SYNC_AFTER_INIT || decltype(arg4)::SYNC_AFTER_INIT || decltype(arg5)::SYNC_AFTER_INIT) \
+                __syncthreads();                                         \
+            arg1.init_async_postsync();                                  \
+            arg2.init_async_postsync();                                  \
+            arg3.init_async_postsync();                                  \
+            arg4.init_async_postsync();                                  \
+            arg5.init_async_postsync();
+
+    #define EXPAND(x) x
+    #define GET_MACRO(_1,_2,_3,_4,_5,NAME,...) NAME
+    #define MAPS_INIT(...) EXPAND(GET_MACRO(__VA_ARGS__, _MI5, _MI4, _MI3, _MI2, _MI1, _MI0)(__VA_ARGS__))
+        
 
 }  // namespace maps
 

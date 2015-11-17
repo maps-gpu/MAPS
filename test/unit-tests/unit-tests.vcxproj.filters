@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="cuda_gtest_utils.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="segmentation_test.cu" />
+    <CudaCompile Include="window_test.cu" />
+    <CudaCompile Include="block_test.cu" />
+    <CudaCompile Include="input_common_test.cu" />
+    <CudaCompile Include="window_perftest.cu" />
+    <CudaCompile Include="system_test.cu" />
+    <CudaCompile Include="block_perftest.cu" />
+    <CudaCompile Include="invoke_multithreading_test.cu" />
+    <CudaCompile Include="scheduler_test.cu" />
+  </ItemGroup>
+</Project>

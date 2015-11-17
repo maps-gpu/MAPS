@@ -54,15 +54,19 @@ Thumbs.db
 *.tlog
 *.deps
 *.lastbuildstate
+*.amplxeproj
+*.mcp
 
 build/
 samples/x64/
-samples/ImageConvolution/x64/
-samples/Histogram/x64/
-samples/Convolution/x64/
-samples/N-Body/x64/
-samples/MatrixMultiplication/x64/
+samples/Release/
+samples/Debug/
+samples/*/x64/
+samples/*/Release/
+samples/*/Debug/
 *.unsuccessfulbuild
 
-samples/SpMV/data/*
-samples/SpMV/Release/*
+samples/spmv/data/*
+!samples/spmv/data/README.txt
+samples/spmv/Release/*
+x64/

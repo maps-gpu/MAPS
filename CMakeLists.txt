@@ -37,6 +37,10 @@ target_link_libraries(sgemm gflags)
 cuda_add_executable(histogram samples/histogram/main.cpp samples/histogram/histogram.cu)
 target_link_libraries(histogram gflags)
 
+cuda_add_executable(spmv samples/spmv/spmv.cu samples/spmv/mmio.cpp 
+                    samples/spmv/main.cpp)
+target_link_libraries(spmv gflags)
+
 # Unit tests
 enable_testing()
 

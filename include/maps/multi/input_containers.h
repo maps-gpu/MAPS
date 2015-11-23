@@ -205,7 +205,7 @@ namespace maps
                     cont->m_dimensions[0] = (int)seg.GetDimension(0);
                     cont->m_dimensions[1] = (int)seg.GetDimension(1);
                     cont->m_containsApron = !seg.Covers(datum);
-                    cont->m_gridWidth = (int)seg.GetDimension(0) / BLOCK_WIDTH / ITEMS_PER_THREAD;
+                    cont->m_gridWidth = maps::RoundUp((int)seg.GetDimension(0), BLOCK_WIDTH * ITEMS_PER_THREAD);
 
                     // Offset block ID for irregular grids
                     cont->block_offset = grid_seg.offset % grid_seg.total_grid_dims.x;
@@ -620,7 +620,7 @@ namespace maps
                     for (unsigned int d = 0; d < seg.m_dims; ++d)
                         cont->m_dimensions[d] = (int)seg.GetDimension(d);
                     cont->m_containsApron = !seg.Covers(datum);
-                    cont->m_gridWidth = (int)seg.GetDimension(0) / BLOCK_WIDTH / IPX;
+                    cont->m_gridWidth = maps::RoundUp((int)seg.GetDimension(0), BLOCK_WIDTH * IPX);
 
                     // Offset block ID for irregular grids
                     cont->block_offset = grid_seg.offset % grid_seg.total_grid_dims.x;

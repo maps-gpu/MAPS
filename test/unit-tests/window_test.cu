@@ -1003,3 +1003,229 @@ TEST(Window, RelativeIndexAligned2D)
     CUASSERT_NOERR(cudaFree(d_in));
     CUASSERT_NOERR(cudaFree(d_out));
 }
+
+template <int BLOCK_WIDTH, int BLOCK_HEIGHT>
+__global__ void NoRadiusSingleGPUKernel(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::WB_ZERO> in,
+                                        maps::StructuredInjectiveSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> out)
+{
+    MAPS_INIT(in, out);
+
+    if (out.Items() == 0)
+        return;
+
+    #pragma unroll
+    MAPS_FOREACH(oiter, out)
+    {
+        *oiter = *in.align(oiter);
+    }
+
+    out.commit();
+}
+
+template <int BLOCK_WIDTH, int BLOCK_HEIGHT>
+__global__ void NoRadiusMultiGPUKernel(MAPS_MULTIDEF2,
+                                       maps::Window<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::WB_ZERO> in,
+                                       maps::StructuredInjective2D<float, BLOCK_WIDTH, BLOCK_HEIGHT> out)
+{
+    MAPS_MULTI_INITVARS(in, out);
+
+    if (out.Items() == 0)
+        return;
+
+    #pragma unroll
+    MAPS_FOREACH(oiter, out)
+    {
+        *oiter = *in.align(oiter);
+    }
+
+    out.commit();
+}
+
+TEST(Window, NoRadiusSingleGPU)
+{
+    enum
+    {
+        BLOCK_WIDTH = 32,
+        BLOCK_HEIGHT = 16,
+        TOTAL_WIDTH = 5000,
+        TOTAL_HEIGHT = 38,
+
+        XBLOCKS = (TOTAL_WIDTH + BLOCK_WIDTH - 1) / BLOCK_WIDTH,
+        YBLOCKS = (TOTAL_HEIGHT + BLOCK_HEIGHT - 1) / BLOCK_HEIGHT,
+        TOTAL_SIZE = TOTAL_WIDTH * TOTAL_HEIGHT,
+    };
+
+    // Allocate GPU memory
+    float *d_in = nullptr, *d_out = nullptr;
+    CUASSERT_NOERR(cudaMalloc(&d_in,  sizeof(float) * TOTAL_SIZE));
+    CUASSERT_NOERR(cudaMalloc(&d_out, sizeof(float) * TOTAL_SIZE));
+
+    // Initialize input
+    std::vector<float> in_val(TOTAL_SIZE), out_val(TOTAL_SIZE);
+
+    for (int x = 0; x < TOTAL_SIZE; ++x)
+    {
+        in_val[x] = (float)x;
+        out_val[x] = 0.0f;
+    }
+    
+    // Copy input
+    CUASSERT_NOERR(cudaMemcpy(d_in, &in_val[0], sizeof(float) * TOTAL_SIZE, cudaMemcpyHostToDevice));
+
+    // Create structures
+    maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::WB_ZERO> win;
+    win.m_ptr = d_in;
+    win.m_stride = win.m_dimensions[0] = TOTAL_WIDTH;
+    win.m_dimensions[1] = TOTAL_HEIGHT;
+
+    maps::StructuredInjectiveSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> soout;
+    soout.m_ptr = d_out;
+    soout.m_stride = soout.m_dimensions[0] = TOTAL_WIDTH;
+    soout.m_dimensions[1] = TOTAL_HEIGHT;
+
+    // Run test
+    NoRadiusSingleGPUKernel<BLOCK_WIDTH, BLOCK_HEIGHT> <<<dim3(XBLOCKS, YBLOCKS), dim3(BLOCK_WIDTH, BLOCK_HEIGHT)>>>(win, soout);
+    CUASSERT_NOERR(cudaDeviceSynchronize());
+
+    // Copy output
+    CUASSERT_NOERR(cudaMemcpy(&out_val[0], d_out, sizeof(float) * TOTAL_SIZE, cudaMemcpyDeviceToHost));
+
+    for (int y = 0; y < TOTAL_HEIGHT; ++y)
+    {
+        for (int x = 0; x < TOTAL_WIDTH; ++x)
+        {
+            ASSERT_EQ(out_val[y * TOTAL_WIDTH + x], in_val[y * TOTAL_WIDTH + x])
+                      << "at index (" << x << ", " << y << ")";
+        }
+    }
+
+    // Free GPU memory
+    CUASSERT_NOERR(cudaFree(d_in));
+    CUASSERT_NOERR(cudaFree(d_out));
+}
+
+TEST(Window, NoRadiusMultiGPU)
+{
+    enum
+    {
+        BLOCK_WIDTH = 32,
+        BLOCK_HEIGHT = 16,
+        TOTAL_WIDTH = 5000,
+        TOTAL_HEIGHT = 38,
+
+        XBLOCKS = (TOTAL_WIDTH + BLOCK_WIDTH - 1) / BLOCK_WIDTH,
+        YBLOCKS = (TOTAL_HEIGHT + BLOCK_HEIGHT - 1) / BLOCK_HEIGHT,
+        TOTAL_SIZE = TOTAL_WIDTH * TOTAL_HEIGHT,
+    };
+
+    // Allocate GPU memory
+    float *d_in = nullptr, *d_out = nullptr;
+    CUASSERT_NOERR(cudaMalloc(&d_in,  sizeof(float) * TOTAL_SIZE));
+    CUASSERT_NOERR(cudaMalloc(&d_out, sizeof(float) * TOTAL_SIZE));
+
+    // Initialize input
+    std::vector<float> in_val(TOTAL_SIZE), out_val(TOTAL_SIZE);
+
+    for (int x = 0; x < TOTAL_SIZE; ++x)
+    {
+        in_val[x] = (float)x;
+        out_val[x] = 0.0f;
+    }
+    
+    // Copy input
+    CUASSERT_NOERR(cudaMemcpy(d_in, &in_val[0], sizeof(float) * TOTAL_SIZE, cudaMemcpyHostToDevice));
+
+    // Create structures
+    maps::Window<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::WB_ZERO> win;
+    win.m_ptr = d_in;
+    win.m_stride = win.m_dimensions[0] = TOTAL_WIDTH;
+    win.m_dimensions[1] = TOTAL_HEIGHT;
+    win.m_containsApron = true;
+    win.block_offset = 0;
+    win.m_gridWidth = XBLOCKS;
+
+    maps::StructuredInjective2D<float, BLOCK_WIDTH, BLOCK_HEIGHT> soout;
+    soout.m_ptr = d_out;
+    soout.m_stride = soout.m_dimensions[0] = TOTAL_WIDTH;
+    soout.m_dimensions[1] = TOTAL_HEIGHT;
+    soout.grid_dims = dim3(XBLOCKS, YBLOCKS);
+    soout.blockId = make_uint3(0,0,0);
+
+    // Run test
+    NoRadiusMultiGPUKernel<BLOCK_WIDTH, BLOCK_HEIGHT> <<<dim3(XBLOCKS * YBLOCKS), dim3(BLOCK_WIDTH, BLOCK_HEIGHT)>>>(
+        0, dim3(XBLOCKS, YBLOCKS), make_uint3(0,0,0), win, soout);
+    CUASSERT_NOERR(cudaDeviceSynchronize());
+
+    // Copy output
+    CUASSERT_NOERR(cudaMemcpy(&out_val[0], d_out, sizeof(float) * TOTAL_SIZE, cudaMemcpyDeviceToHost));
+
+    for (int y = 0; y < TOTAL_HEIGHT; ++y)
+    {
+        for (int x = 0; x < TOTAL_WIDTH; ++x)
+        {
+            ASSERT_EQ(out_val[y * TOTAL_WIDTH + x], in_val[y * TOTAL_WIDTH + x])
+                      << "at index (" << x << ", " << y << ")";
+        }
+    }
+
+    // Free GPU memory
+    CUASSERT_NOERR(cudaFree(d_in));
+    CUASSERT_NOERR(cudaFree(d_out));
+}
+
+TEST(Window, NoRadiusMAPSMulti)
+{
+    enum
+    {
+        BLOCK_WIDTH = 32,
+        BLOCK_HEIGHT = 16,
+        TOTAL_WIDTH = 5000,
+        TOTAL_HEIGHT = 38,
+        
+        XBLOCKS = (TOTAL_WIDTH + BLOCK_WIDTH - 1) / BLOCK_WIDTH,
+        YBLOCKS = (TOTAL_HEIGHT + BLOCK_HEIGHT - 1) / BLOCK_HEIGHT,
+        TOTAL_SIZE = TOTAL_WIDTH * TOTAL_HEIGHT,
+    };
+
+    // Allocate GPU memory
+    maps::multi::Matrix<float> in(TOTAL_WIDTH, TOTAL_HEIGHT),
+                               out(TOTAL_WIDTH, TOTAL_HEIGHT);
+
+    // Initialize input
+    std::vector<float> in_val(TOTAL_SIZE), out_val(TOTAL_SIZE);
+
+    for (int x = 0; x < TOTAL_SIZE; ++x)
+    {
+        in_val[x] = (float)x;
+        out_val[x] = 0.0f;
+    }
+
+    // Bind matrices
+    in.Bind(&in_val[0]);
+    out.Bind(&out_val[0]);
+
+    maps::multi::Scheduler sched{0};
+
+    sched.AnalyzeCall(dim3(), dim3(BLOCK_WIDTH, BLOCK_HEIGHT),
+                      maps::multi::Window2D<float, BLOCK_WIDTH, BLOCK_HEIGHT, 0>(in),
+                      maps::multi::StructuredInjectiveMatrixO<float>(out));
+
+    // Run test
+    sched.Invoke(NoRadiusMultiGPUKernel<BLOCK_WIDTH, BLOCK_HEIGHT>, dim3(), dim3(BLOCK_WIDTH, BLOCK_HEIGHT),
+                 maps::multi::Window2D<float, BLOCK_WIDTH, BLOCK_HEIGHT, 0>(in),
+                 maps::multi::StructuredInjectiveMatrixO<float>(out));
+    CUASSERT_NOERR(cudaDeviceSynchronize());
+
+    // Copy output
+    sched.Gather<false>(out);
+
+    for (int y = 0; y < TOTAL_HEIGHT; ++y)
+    {
+        for (int x = 0; x < TOTAL_WIDTH; ++x)
+        {
+            ASSERT_EQ(out_val[y * TOTAL_WIDTH + x], in_val[y * TOTAL_WIDTH + x])
+                << "at index (" << x << ", " << y << ")";
+        }
+    }
+}
+

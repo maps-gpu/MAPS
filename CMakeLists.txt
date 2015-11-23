@@ -56,6 +56,7 @@ cuda_add_executable(unit-tests test/unit-tests/main.cpp
                     test/unit-tests/block_perftest.cu
                     test/unit-tests/block_test.cu
                     test/unit-tests/input_common_test.cu
+                    test/unit-tests/scheduler_test.cu
                     test/unit-tests/segmentation_test.cu
                     test/unit-tests/system_test.cu
                     test/unit-tests/window_perftest.cu
@@ -69,6 +70,7 @@ GTEST_ADD_TESTS(unit-tests test/unit-tests/main.cpp
                 test/unit-tests/block_perftest.cu
                 test/unit-tests/block_test.cu
                 test/unit-tests/input_common_test.cu
+                test/unit-tests/scheduler_test.cu
                 test/unit-tests/segmentation_test.cu
                 test/unit-tests/system_test.cu
                 test/unit-tests/window_perftest.cu

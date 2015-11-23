@@ -54,6 +54,7 @@ void FillTest(int ngpus)
     sched.AnalyzeCall(dim3(arrsize), dim3(1, 1, 1),
                       maps::multi::Window<uint8_t, 1, 1, 1, 1, 0>(vec));
     sched.Fill(vec, FILL_VALUE);
+    sched.WaitAll();
 
     std::vector<uint8_t> hvec(arrsize, 0);
     vec.Bind(&hvec[0]);

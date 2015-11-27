@@ -91,14 +91,13 @@ struct ConvRegression
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, int RADIUS, maps::BorderBehavior BORDERS>
-__global__ void MAPSConvolution(maps::WindowSingleGPU<float, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, RADIUS, 1, 1, 1, BORDERS> in,
-                                maps::StructuredInjectiveSingleGPU<float, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH> out)
+template <int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
+          int RADIUS, maps::BorderBehavior BORDERS, int IPX = 1, 
+          int IPY = 1, int IPZ = 1>
+__global__ void MAPSConvolution(maps::WindowSingleGPU<float, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, RADIUS, IPX, IPY, IPZ, BORDERS> in,
+                                maps::StructuredInjectiveSingleGPU<float, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY> out)
 {    
-    __shared__ typename decltype(in)::SharedData sdata;
-
-    in.init(sdata);
-    out.init();    
+    MAPS_INIT(in, out);
 
     if (out.Items() == 0)
         return;
@@ -112,7 +111,6 @@ __global__ void MAPSConvolution(maps::WindowSingleGPU<float, DIMS, BLOCK_WIDTH, 
         #pragma unroll
         MAPS_FOREACH_ALIGNED(iter, in, oiter)
         {
-            //printf("Index %d: Iter: %f\n", i, *iter);
             result += *iter * kConvKernel[i++];
         }
         *oiter = result;
@@ -401,7 +399,7 @@ std::string BufferSize(unsigned int buffer_size[DIMS])
     return ss.str();
 }
 
-template <int DIMS, int RADIUS, maps::BorderBehavior BORDERS>
+template <int DIMS, int RADIUS, maps::BorderBehavior BORDERS, int IPX = 1, int IPY = 1, int IPZ = 1>
 void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
                 float *host_kernel, float *buffer_in, float *buffer_out,
                 float *buffer_regression, float *device_in, float *device_out)
@@ -432,7 +430,46 @@ void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
                 return;
         }
     }
-    
+
+    // Verify that ILP optimizations will work
+    if (buffer_size[0] < IPX)
+    {
+        printf("Buffer X size is too short for ILP optimization test (%d < %d)\n",
+               buffer_size[0], IPX);
+        return;
+    }
+    if (buffer_size[0] % IPX != 0)
+    {
+        printf("Buffer X size (%d) is not divisible by ILP amount (%d)\n", buffer_size[0], IPX);
+        return;
+    }
+    if (DIMS < 2 && IPY > 1)
+        return;
+    if (DIMS >= 2 && buffer_size[1] < IPY)
+    {
+        printf("Buffer Y size is too short for ILP optimization test (%d < %d)\n",
+               buffer_size[1], IPY);
+        return;
+    }
+    if (DIMS >= 2 && buffer_size[1] % IPY != 0)
+    {
+        printf("Buffer Y size (%d) is not divisible by ILP amount (%d)\n", buffer_size[1], IPY);
+        return;
+    }
+    if (DIMS < 3 && IPZ > 1)
+        return;
+    if (DIMS >= 3 && buffer_size[2] < IPZ)
+    {
+        printf("Buffer Z size is too short for ILP optimization test (%d < %d)\n",
+               buffer_size[2], IPZ);
+        return;
+    }
+    if (DIMS >= 3 && buffer_size[2] % IPZ != 0)
+    {
+        printf("Buffer Z size (%d) is not divisible by ILP amount (%d)\n", buffer_size[2], IPZ);
+        return;
+    }
+
     unsigned int kernelsize = maps::Power<2 * RADIUS + 1, DIMS>::value;
 
     // Prepare random number generator.
@@ -468,12 +505,12 @@ void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
         total_size *= buffer_size[i];
 
     maps::WindowSingleGPU<float, DIMS, BW, ((DIMS >= 2) ? BH : 1),
-                    ((DIMS >= 3) ? BD : 1), RADIUS, 1, 1, 1, BORDERS> win;
+                    ((DIMS >= 3) ? BD : 1), RADIUS, IPX, IPY, IPZ, BORDERS> win;
     win.m_ptr = device_in;
     win.m_stride = buffer_size[0];
     
     maps::StructuredInjectiveSingleGPU<float, DIMS, BW, ((DIMS >= 2) ? BH : 1),
-                                             ((DIMS >= 3) ? BD : 1), 1, 1> soout;
+                                             ((DIMS >= 3) ? BD : 1), IPX, IPY> soout;
     soout.m_ptr = device_out;
     soout.m_stride = buffer_size[0];
     
@@ -483,15 +520,15 @@ void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
         soout.m_dimensions[i] = buffer_size[i];
     }
 
-    dim3 grid_dims(maps::RoundUp(buffer_size[0], BW),
-                   (DIMS >= 2) ? maps::RoundUp(buffer_size[1], BH) : 1,
-                   (DIMS >= 3) ? maps::RoundUp(buffer_size[2], BD) : 1);
+    dim3 grid_dims(maps::RoundUp(buffer_size[0], BW * IPX),
+                   (DIMS >= 2) ? maps::RoundUp(buffer_size[1], BH * IPY) : 1,
+                   (DIMS >= 3) ? maps::RoundUp(buffer_size[2], BD * IPZ) : 1);
     dim3 block_dims(BW, 
                     (DIMS >= 2) ? BH : 1,
                     (DIMS >= 3) ? BD : 1);
     
     MAPSConvolution<DIMS, BW, ((DIMS >= 2) ? BH : 1), 
-                    ((DIMS >= 3) ? BD : 1), RADIUS, BORDERS> <<<grid_dims, block_dims>>>(win, soout);
+                    ((DIMS >= 3) ? BD : 1), RADIUS, BORDERS, IPX, IPY, IPZ> <<<grid_dims, block_dims>>>(win, soout);
     CUASSERT_NOERR(cudaGetLastError());
     CUASSERT_NOERR(cudaDeviceSynchronize());
 
@@ -623,7 +660,7 @@ TEST(Window, Window1DUnit)
 
 
 TEST(Window, Window1DRandom)
-{
+{ 
     // Prepare buffers in advance.
     int num_sizes = sizeof(kSizes) / sizeof(unsigned int);
     size_t max_buffer_size = kSizes[num_sizes - 1] * sizeof(float);
@@ -743,6 +780,63 @@ TEST(Window, Window2DRandom)
         }
     }
 
+    ASSERT_EQ(cudaFree(dRegressionIn), cudaSuccess);
+    ASSERT_EQ(cudaFree(dRegressionOut), cudaSuccess);
+}
+
+TEST(Window, Window2DILP)
+{
+    unsigned int size[2] = { 1200, 2400 };
+
+    // Prepare buffers in advance.
+    size_t max_buffer_size = size[0] * size[1] * sizeof(float);
+    size_t max_kernel_size = (MAX_WINDOW_RADIUS * 2 + 1) *
+        (MAX_WINDOW_RADIUS * 2 + 1) * sizeof(float);
+    maps::pinned_vector<float> hKernel(max_kernel_size, 0.0f),
+        hBuffIn(max_buffer_size),
+        hBuffOut(max_buffer_size),
+        hBuffRegression(max_buffer_size);
+    float *dRegressionIn = nullptr, *dRegressionOut = nullptr;
+    ASSERT_EQ(cudaSetDevice(0), cudaSuccess);
+    ASSERT_EQ(cudaMalloc(&dRegressionIn, max_buffer_size), cudaSuccess);
+    ASSERT_EQ(cudaMalloc(&dRegressionOut, max_buffer_size), cudaSuccess);
+
+    // Prepare random number generator.
+    std::mt19937 gen(kRandomSeed2);
+    std::uniform_real_distribution<float> ud(-1.0f, 1.0f);
+
+    for (size_t i = 0; i < max_buffer_size / sizeof(float); ++i)
+        hBuffIn[i] = ud(gen);
+
+    ASSERT_EQ(cudaMemcpy(dRegressionIn, &hBuffIn[0], max_buffer_size,
+        cudaMemcpyHostToDevice), cudaSuccess);
+
+    #define TEST_WINDOW_ILP(IPX, IPY) do {                                              \
+        TestWindow<2, 0, maps::WB_WRAP, IPX, IPY>(                                      \
+            true, size, &hKernel[0], &hBuffIn[0], &hBuffOut[0], &hBuffRegression[0],    \
+            dRegressionIn, dRegressionOut);                                             \
+        TestWindow<2, 1, maps::WB_WRAP, IPX, IPY>(                                      \
+            true, size, &hKernel[0], &hBuffIn[0], &hBuffOut[0], &hBuffRegression[0],    \
+            dRegressionIn, dRegressionOut);                                             \
+    } while (0)
+
+
+    // Test various ILP configurations
+    TEST_WINDOW_ILP(1, 1);
+    TEST_WINDOW_ILP(2, 1);
+    TEST_WINDOW_ILP(3, 1);
+    TEST_WINDOW_ILP(4, 1);
+    TEST_WINDOW_ILP(1, 2);
+    TEST_WINDOW_ILP(1, 3);
+    TEST_WINDOW_ILP(4, 2);
+    TEST_WINDOW_ILP(5, 3);
+    TEST_WINDOW_ILP(3, 5);
+    TEST_WINDOW_ILP(8, 1);
+    TEST_WINDOW_ILP(10, 1);
+
+    #undef TEST_WINDOW_ILP
+
+    
     ASSERT_EQ(cudaFree(dRegressionIn), cudaSuccess);
     ASSERT_EQ(cudaFree(dRegressionOut), cudaSuccess);
 }
@@ -1228,4 +1322,3 @@ TEST(Window, NoRadiusMAPSMulti)
         }
     }
 }
-

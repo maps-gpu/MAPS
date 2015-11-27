@@ -30,11 +30,11 @@
 /*
 Expected Results
 ----------------
-GPU Model   |  Naive  |  MAPS  |  MAPST  |
-------------+---------+--------+---------|
-TITAN BLACK | 348 us  |  88 us |  79 us  |
-GTX 680     | 500 us  | 141 us | 131 us  |
-
+GPU Model   |  Naive  |  MAPS  |  MAPST  | MAPST-ILP
+------------+---------+--------+---------|-----------
+TITAN BLACK | 348 us  |  88 us |  79 us  |  TBD us
+GTX 680     | 500 us  | 141 us | 131 us  |  TBD us
+GTX 730M    | 2855 us | 967 us | 748 us  |  343 us
 */
 
 #include <cstdio>
@@ -58,6 +58,12 @@ GTX 680     | 500 us  | 141 us | 131 us  |
 
 #define BW 32
 #define BH 32
+
+// Using smaller block sizes to accomodate for memory loads
+#define BWILP 16
+#define BHILP 16
+#define IPX 4
+#define IPY 2
 
 #define REPETITIONS 1000
 
@@ -102,24 +108,26 @@ __global__ void conv2Naive(const float *in, size_t inStride,
     out[y * outStride + x] = result;
 }
 
-template<int RADIUS, int BLOCK_WIDTH, int BLOCK_HEIGHT, int TEXTURE_UID = -1>
-__global__ void conv2MAPS(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, RADIUS, 1, 1, 1, maps::WB_NOCHECKS, TEXTURE_UID> in,
-                          maps::StructuredInjectiveSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> out)
+template<int RADIUS, int BLOCK_WIDTH, int BLOCK_HEIGHT, int TEXTURE_UID = -1, int ILP_X = 1, int ILP_Y = 1>
+__global__ void conv2MAPS(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, RADIUS, ILP_X, ILP_Y, 1, maps::WB_NOCHECKS, TEXTURE_UID> in,
+                          maps::StructuredInjectiveSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y> out)
 {
     MAPS_INIT(in, out);
+
+    if (out.Items() == 0)
+        return;
 
     #pragma unroll
     MAPS_FOREACH(oiter, out)
     {
-        float result = 0.0f;
+        *oiter = 0.0f;
         int i = 0;
 
         #pragma unroll
         MAPS_FOREACH_ALIGNED(iter, in, oiter)
         {
-            result += *iter * dev_convKernel[i++];
+            *oiter += *iter * dev_convKernel[i++];
         }
-        *oiter = result;
     }
 
     out.commit();
@@ -133,7 +141,7 @@ TEST(Performance, Window2D_Convolution)
 #endif
 
     float *dev_image = NULL, *dev_naiveResult = NULL,
-        *dev_MAPSResult = NULL, *dev_MAPSTexResult = NULL;
+        *dev_MAPSResult = NULL, *dev_MAPSTexResult = NULL, *dev_MAPSILPResult = NULL;
     size_t width = IMAGE_WIDTH, height = IMAGE_HEIGHT, imageStride = 0;
 
     // Create input data
@@ -146,6 +154,7 @@ TEST(Performance, Window2D_Convolution)
     CUASSERT_NOERR(cudaMalloc(&dev_naiveResult, sizeof(float) * width * height));
     CUASSERT_NOERR(cudaMalloc(&dev_MAPSResult, sizeof(float) * width * height));
     CUASSERT_NOERR(cudaMalloc(&dev_MAPSTexResult, sizeof(float) * width * height));
+    CUASSERT_NOERR(cudaMalloc(&dev_MAPSILPResult, sizeof(float) * width * height));
 
     // Create GPU texture
 
@@ -158,13 +167,16 @@ TEST(Performance, Window2D_Convolution)
 
     // Copy and compare the results
     std::vector<float> host_resultNaive(width * height, 0), host_resultMAPS(width * height, 0),
-        host_resultMAPSTex(width * height, 0);
+        host_resultMAPSTex(width * height, 0), host_resultMAPSILP(width * height, 0);
 
     // Bind texture to data
     CUASSERT_NOERR(TexId::BindTexture(dev_image, width, height, imageStride));
 
     dim3 block_dims(BW, BH, 1);
     dim3 grid_dims(maps::RoundUp(width, block_dims.x), maps::RoundUp(height, block_dims.y), 1);
+    
+    dim3 block_dims_ilp(BWILP, BHILP, 1);
+    dim3 grid_dims_ilp(maps::RoundUp(width, block_dims_ilp.x * IPX), maps::RoundUp(height, block_dims_ilp.y * IPY), 1);
 
     // Copy input data to GPU
     CUASSERT_NOERR(cudaMemcpyToSymbolAsync(dev_convKernel, g_convKernel,
@@ -181,8 +193,8 @@ TEST(Performance, Window2D_Convolution)
     for (int i = 0; i < REPETITIONS; i++)
     {
         conv2Naive<KERNEL_RADIUS> <<<grid_dims, block_dims>>>(dev_image, imageStride / sizeof(float),
-                                                               dev_naiveResult, width,
-                                                               width, height);
+                                                              dev_naiveResult, width,
+                                                              width, height);
     }
 
     cudaDeviceSynchronize();
@@ -228,17 +240,40 @@ TEST(Performance, Window2D_Convolution)
     {
         conv2MAPS<KERNEL_RADIUS, BW, BH, IMAGE_TEXTURE_UID> <<<grid_dims, block_dims>>>(wintex, soout);
     }
-
-
+    
     CUASSERT_NOERR(cudaDeviceSynchronize());
     auto mtt2 = std::chrono::high_resolution_clock::now();
 
-    CUASSERT_NOERR(TexId::UnbindTexture());
-
     CUASSERT_NOERR(cudaMemcpy(&host_resultMAPSTex[0], dev_MAPSTexResult, sizeof(float)* width * height, cudaMemcpyDeviceToHost));
 
-    int numErrorsMAPS = 0, numErrorsMAPSTex = 0;
-    float meanErrorMAPS = 0.0f, meanErrorMAPSTex = 0.0f;
+    maps::WindowSingleGPU<float, 2, BWILP, BHILP, 1, KERNEL_RADIUS, IPX, IPY, 1, maps::WB_NOCHECKS, IMAGE_TEXTURE_UID> wintexilp;
+    wintexilp.m_ptr = dev_image;
+    wintexilp.m_stride = imageStride / sizeof(float);
+    wintexilp.m_dimensions[0] = width; wintexilp.m_dimensions[1] = height;
+
+    maps::StructuredInjectiveSingleGPU<float, 2, BWILP, BHILP, 1, IPX, IPY> sooutilp;
+    sooutilp.m_ptr = dev_MAPSILPResult;
+    sooutilp.m_stride = width;
+    sooutilp.m_dimensions[0] = width; sooutilp.m_dimensions[1] = height;
+
+    cudaDeviceSynchronize();
+    auto mit1 = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < REPETITIONS; i++)
+    {
+        conv2MAPS<KERNEL_RADIUS, BWILP, BHILP, IMAGE_TEXTURE_UID, IPX, IPY> <<<grid_dims_ilp, block_dims_ilp>>>(wintexilp, sooutilp);
+    }
+
+
+    CUASSERT_NOERR(cudaDeviceSynchronize());
+    auto mit2 = std::chrono::high_resolution_clock::now();
+    
+    CUASSERT_NOERR(TexId::UnbindTexture());
+
+    CUASSERT_NOERR(cudaMemcpy(&host_resultMAPSILP[0], dev_MAPSILPResult, sizeof(float)* width * height, cudaMemcpyDeviceToHost));
+
+    int numErrorsMAPS = 0, numErrorsMAPSTex = 0, numErrorsMAPSILP = 0;
+    float meanErrorMAPS = 0.0f, meanErrorMAPSTex = 0.0f, meanErrorMAPSILP = 0.0f;
 
     // Do not compare the results in the outer borders
     for (size_t y = KERNEL_RADIUS; y < height - KERNEL_RADIUS; ++y)
@@ -266,6 +301,17 @@ TEST(Performance, Window2D_Convolution)
                 numErrorsMAPSTex++;
             }
             meanErrorMAPSTex += fabs(host_resultNaive[y * width + x] - host_resultMAPSTex[y * width + x]);
+
+            // Test Naive vs. MAPS (Texture+ILP)
+            if (fabs(host_resultNaive[y * width + x] - host_resultMAPSILP[y * width + x]) > 1e-6)
+            {
+                if (numErrorsMAPSILP == 0)
+                    printf("MAPS(Texture+ILP): First error in (%d, %d): %f != %f\n", x, y,
+                    host_resultNaive[y * width + x], host_resultMAPSILP[y * width + x]);
+
+                numErrorsMAPSILP++;
+            }
+            meanErrorMAPSILP += fabs(host_resultNaive[y * width + x] - host_resultMAPSILP[y * width + x]);
         }
     }
 
@@ -274,20 +320,24 @@ TEST(Performance, Window2D_Convolution)
     printf("Naive kernel time: %f ms\n\n", std::chrono::duration_cast<std::chrono::microseconds>(nt2 - nt1).count() / 1000.0 / REPETITIONS);
     printf("MAPS  kernel time: %f ms\n\n", std::chrono::duration_cast<std::chrono::microseconds>(mt2 - mt1).count() / 1000.0 / REPETITIONS);
     printf("MAPST kernel time: %f ms\n\n", std::chrono::duration_cast<std::chrono::microseconds>(mtt2 - mtt1).count() / 1000.0 / REPETITIONS);
+    printf("MAPSTILP kernel time: %f ms\n\n", std::chrono::duration_cast<std::chrono::microseconds>(mit2 - mit1).count() / 1000.0 / REPETITIONS);
 
-    printf("Number of errors: Naive vs. MAPS = %d, Naive vs. MAPS(Texture) = %d\n", numErrorsMAPS, numErrorsMAPSTex);
-    printf("Mean error:       Naive vs. MAPS = %f, Naive vs. MAPS(Texture) = %f\n",
+    printf("Number of errors: Naive vs. MAPS = %d, MAPS(Texture) = %d, MAPS(Tex+ILP) = %d\n", numErrorsMAPS, numErrorsMAPSTex, numErrorsMAPSILP);
+    printf("Mean error:       Naive vs. MAPS = %f, MAPS(Texture) = %f, MAPS(Tex+ILP) = %f\n",
            meanErrorMAPS / (float)((width - 2 * KERNEL_RADIUS) * (height - 2 * KERNEL_RADIUS)),
-           meanErrorMAPSTex / (float)((width - 2 * KERNEL_RADIUS) * (height - 2 * KERNEL_RADIUS)));
+           meanErrorMAPSTex / (float)((width - 2 * KERNEL_RADIUS) * (height - 2 * KERNEL_RADIUS)),
+           meanErrorMAPSILP / (float)((width - 2 * KERNEL_RADIUS) * (height - 2 * KERNEL_RADIUS)));
 
     ASSERT_EQ(numErrorsMAPS, 0);
     ASSERT_EQ(numErrorsMAPSTex, 0);
+    ASSERT_EQ(numErrorsMAPSILP, 0);
 
     // Free allocated data
     CUASSERT_NOERR(cudaFree(dev_image));
     CUASSERT_NOERR(cudaFree(dev_naiveResult));
     CUASSERT_NOERR(cudaFree(dev_MAPSResult));
     CUASSERT_NOERR(cudaFree(dev_MAPSTexResult));
+    CUASSERT_NOERR(cudaFree(dev_MAPSILPResult));
 
     // cudaDeviceReset must be called before exiting in order for profiling and
     // tracing tools such as Nsight and Visual Profiler to show complete traces.

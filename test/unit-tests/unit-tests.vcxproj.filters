@@ -2,6 +2,108 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="cuda_gtest_utils.h" />
+    <ClInclude Include="..\..\include\maps\maps.cuh">
+      <Filter>MAPS</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\adjacency.cuh">
+      <Filter>MAPS\Input Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\block.cuh">
+      <Filter>MAPS\Input Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\irregular.cuh">
+      <Filter>MAPS\Input Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\permutation.cuh">
+      <Filter>MAPS\Input Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\traversal.cuh">
+      <Filter>MAPS\Input Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\window.cuh">
+      <Filter>MAPS\Input Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_common.cuh">
+      <Filter>MAPS\Input Containers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_globalread.cuh">
+      <Filter>MAPS\Input Containers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_globaltoarray.cuh">
+      <Filter>MAPS\Input Containers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_globaltoshared.cuh">
+      <Filter>MAPS\Input Containers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\internal\common.cuh">
+      <Filter>MAPS\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\internal\common.h">
+      <Filter>MAPS\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\internal\cuda_utils.hpp">
+      <Filter>MAPS\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\internal\texref.cuh">
+      <Filter>MAPS\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\internal\type_traits.hpp">
+      <Filter>MAPS\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\aggregators.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\allocator.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\common.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\datum.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\graph.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\graph_containers.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\graph_datum.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\input_containers.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\memory_analyzer.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\multi.cuh">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\output_containers.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\pinned_allocation.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\scheduler.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\task_constructor.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\task_graph.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\multi\worker.h">
+      <Filter>MAPS\Multi-GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\output_containers\injective.cuh">
+      <Filter>MAPS\Output Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\output_containers\reductive.cuh">
+      <Filter>MAPS\Output Containers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -16,5 +118,42 @@
     <CudaCompile Include="block_perftest.cu" />
     <CudaCompile Include="invoke_multithreading_test.cu" />
     <CudaCompile Include="scheduler_test.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="MAPS">
+      <UniqueIdentifier>{5057e190-ab58-482a-a232-8eac03ac5f8c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MAPS\Input Containers">
+      <UniqueIdentifier>{66484be3-891c-4311-9739-edea5e28f63e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MAPS\Input Containers\Block">
+      <UniqueIdentifier>{c429b478-367e-407d-bd3c-e620c71664a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MAPS\Input Containers\Internal">
+      <UniqueIdentifier>{c8b67038-70d7-4ef1-9d19-8fae1f404bc5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MAPS\Input Containers\Window">
+      <UniqueIdentifier>{9745b78e-0357-4d7b-8018-d37dcc1397bf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MAPS\Internal">
+      <UniqueIdentifier>{16e3e914-0afc-410e-9a83-2e0fee9f1041}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MAPS\Multi-GPU">
+      <UniqueIdentifier>{79302249-728c-4e12-b0a2-06aadd5811bf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MAPS\Output Containers">
+      <UniqueIdentifier>{c09788ed-0721-4b66-b631-e622af3cb5d0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\include\maps\input_containers\block\block_iterator.inl">
+      <Filter>MAPS\Input Containers\Block</Filter>
+    </None>
+    <None Include="..\..\include\maps\input_containers\window\window_iterator.inl">
+      <Filter>MAPS\Input Containers\Window</Filter>
+    </None>
+    <None Include="..\..\include\maps\input_containers\window\window2D_ilp.inl">
+      <Filter>MAPS\Input Containers\Window</Filter>
+    </None>
   </ItemGroup>
 </Project>

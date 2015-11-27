@@ -45,7 +45,7 @@ namespace maps
     template<typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
              int BLOCK_DEPTH, int WINDOW_APRON, int IPX, int IPY, int IPZ, 
              BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
-             bool MULTI_GPU>
+             bool USE_REGISTERS, int XSTRIDE, bool MULTI_GPU>
     class WindowIterator;
 
     // Template aliases for ease of use
@@ -108,10 +108,9 @@ namespace maps
         {
             WIND_WIDTH = WINDOW_APRON * 2 + 1,
 
-            // TODO: ILP
-            SHARED_WIDTH = BLOCK_WIDTH + 2 * WINDOW_APRON,
-            SHARED_HEIGHT= ((DIMS < 2) ? 1 : (BLOCK_HEIGHT + 2 * WINDOW_APRON)),
-            SHARED_DEPTH  = ((DIMS < 3) ? 1 : (BLOCK_DEPTH + 2 * WINDOW_APRON)),
+            SHARED_WIDTH = IPX * (BLOCK_WIDTH + 2 * WINDOW_APRON),
+            SHARED_HEIGHT = ((DIMS < 2) ? 1 : (IPY * (BLOCK_HEIGHT + 2 * WINDOW_APRON))),
+            SHARED_DEPTH  = ((DIMS < 3) ? 1 : (IPZ * (BLOCK_DEPTH + 2 * WINDOW_APRON))),
 
             // If this value is 1, skip shared memory and read directly to 
             // registers
@@ -124,6 +123,8 @@ namespace maps
                               ((WINDOW_APRON * 2 + IPX) * 
                                (WINDOW_APRON * 2 + IPY) * 
                                (WINDOW_APRON * 2 + IPZ)) : 1,
+
+            XSTRIDE = USE_REGISTERS ? (WINDOW_APRON * 2 + IPX) : SHARED_WIDTH,
         };
         
         __device__ __forceinline__ unsigned int GetBeginIndex() const
@@ -132,12 +133,12 @@ namespace maps
             {
             default:
             case 1:
-                return threadIdx.x;
+                return threadIdx.x * IPX;
             case 2:
-                return threadIdx.x + threadIdx.y * SHARED_WIDTH;
+                return threadIdx.x * IPX + threadIdx.y * IPY * SHARED_WIDTH;
             case 3:
-                return threadIdx.x + threadIdx.y * SHARED_WIDTH + 
-                       threadIdx.z * SHARED_WIDTH * SHARED_HEIGHT;
+                return threadIdx.x * IPX + threadIdx.y * IPY * SHARED_WIDTH +
+                       threadIdx.z * IPZ * SHARED_WIDTH * SHARED_HEIGHT;
             }
         }
 
@@ -171,7 +172,7 @@ namespace maps
         __device__ __forceinline__ const T& internal_at_1D(
             const int *index_array, int offx) const
         {
-            const unsigned int OFFSETX = (USE_REGISTERS) ? 0 : threadIdx.x;
+            const unsigned int OFFSETX = (USE_REGISTERS) ? 0 : threadIdx.x * IPX;
 
             if (USE_REGISTERS)
                 return m_regs[(OFFSETX + index_array[0] + WINDOW_APRON + offx)];
@@ -182,8 +183,8 @@ namespace maps
         __device__ __forceinline__ const T& internal_at_2D(
             const int *index_array, int offx, int offy) const
         {
-            const unsigned int OFFSETX = (USE_REGISTERS) ? 0 : threadIdx.x;
-            const unsigned int OFFSETY = (USE_REGISTERS) ? 0 : threadIdx.y;
+            const unsigned int OFFSETX = (USE_REGISTERS) ? 0 : threadIdx.x * IPX;
+            const unsigned int OFFSETY = (USE_REGISTERS) ? 0 : threadIdx.y * IPY;
 
             
             if (USE_REGISTERS)
@@ -200,9 +201,9 @@ namespace maps
         __device__ __forceinline__ const T& internal_at_3D(
             const int *index_array, int offx, int offy, int offz) const
         {
-            const unsigned int OFFSETX = (USE_REGISTERS) ? 0 : threadIdx.x;
-            const unsigned int OFFSETY = (USE_REGISTERS) ? 0 : threadIdx.y;
-            const unsigned int OFFSETZ = (USE_REGISTERS) ? 0 : threadIdx.z;
+            const unsigned int OFFSETX = (USE_REGISTERS) ? 0 : threadIdx.x * IPX;
+            const unsigned int OFFSETY = (USE_REGISTERS) ? 0 : threadIdx.y * IPY;
+            const unsigned int OFFSETZ = (USE_REGISTERS) ? 0 : threadIdx.z * IPZ;
 
             if (USE_REGISTERS)
                 return m_regs[(OFFSETX + index_array[0] + WINDOW_APRON + offx) +
@@ -244,7 +245,7 @@ namespace maps
         // Define iterator classes
         typedef WindowIterator<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH,
                                WINDOW_APRON, IPX, IPY, IPZ, BORDERS, 
-                               TEXTURE_UID, GRS, MULTI_GPU> iterator;
+                               TEXTURE_UID, GRS, USE_REGISTERS, XSTRIDE, MULTI_GPU> iterator;
         typedef iterator const_iterator;
   
         __host__ __device__ Window() : block_offset(0), m_gridWidth(0), 
@@ -424,7 +425,7 @@ namespace maps
             IOutputContainerIterator& oiter) const
         {
             return iterator(((USE_REGISTERS) ? 0 : GetBeginIndex()) + 
-                            oiter.m_pos, *this);
+                            oiter.m_pos % IPX + (oiter.m_pos / IPX) * XSTRIDE, *this);
         }
 
         /**
@@ -436,7 +437,7 @@ namespace maps
             IOutputContainerIterator& oiter) const
         {
             return iterator(((USE_REGISTERS) ? 0 : GetBeginIndex()) + 
-                            ELEMENTS + oiter.m_pos, *this);
+                            ELEMENTS + oiter.m_pos % IPX + (oiter.m_pos / IPX) * XSTRIDE, *this);
         }
 
         /**

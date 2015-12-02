@@ -273,6 +273,29 @@ namespace maps
         }
 
         // TODO(later): aligned iterators
+
+
+        /**
+        * @brief Progresses to process the next chunk (does nothing).
+        */
+        __device__ __forceinline__ void nextChunk() { }
+
+        /**
+        * Progresses to process the next chunk without calling __syncthreads()
+        * (does nothing).
+        * @note This is an advanced function that should be used carefully.
+        */
+        __device__ __forceinline__ void nextChunkAsync() { }
+
+        /**
+        * @brief Returns false if there are more chunks to process.
+        */
+        __device__ __forceinline__ bool isDone() { return true; }
+
+        /**
+        * @brief Returns the total number of chunks, or 0 for dynamic chunks.
+        */
+        __device__ __forceinline__ int chunks() { return 1; }
     };
 
 }  // namespace maps

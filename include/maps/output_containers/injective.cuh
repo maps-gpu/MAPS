@@ -102,6 +102,7 @@ namespace maps
         {
             ELEMENTS = ITEMS_PER_THREAD * ROWS_PER_THREAD,
             SYNC_AFTER_INIT = false,
+            DIRECT_TO_GLOBAL = false,
         };
 
         struct SharedData
@@ -141,10 +142,6 @@ namespace maps
                     blockId = blockIdx;
                 }
             }
-            else
-            {
-                blockId = blockIdx;
-            }            
         }
 
         __device__ __forceinline__ void init(SharedData& sdata)
@@ -164,7 +161,7 @@ namespace maps
                 return 0;
             case 1:
             {
-                int x = (BLOCK_WIDTH * blockId.x + threadIdx.x) * ITEMS_PER_THREAD;
+                int x = (BLOCK_WIDTH * (MULTI_GPU ? blockId.x : blockIdx.x) + threadIdx.x) * ITEMS_PER_THREAD;
                 if (x >= m_dimensions[0])
                     return 0;
                 
@@ -172,8 +169,8 @@ namespace maps
             }
             case 2:
             {
-                int x = (BLOCK_WIDTH * blockId.x + threadIdx.x) * ITEMS_PER_THREAD;
-                int y = (BLOCK_HEIGHT * blockId.y + threadIdx.y) * ROWS_PER_THREAD;
+                int x = (BLOCK_WIDTH * (MULTI_GPU ? blockId.x : blockIdx.x) + threadIdx.x) * ITEMS_PER_THREAD;
+                int y = (BLOCK_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y) + threadIdx.y) * ROWS_PER_THREAD;
                 if (x >= m_dimensions[0] || y >= m_dimensions[1])
                     return 0;
                 
@@ -181,9 +178,9 @@ namespace maps
             }
             case 3:
             {
-                int x = (BLOCK_WIDTH * blockId.x + threadIdx.x) * ITEMS_PER_THREAD;
-                int y = (BLOCK_HEIGHT * blockId.y + threadIdx.y) * ROWS_PER_THREAD;
-                int z = BLOCK_DEPTH * blockId.z + threadIdx.z;
+                int x = (BLOCK_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x) + threadIdx.x) * ITEMS_PER_THREAD;
+                int y = (BLOCK_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y) + threadIdx.y) * ROWS_PER_THREAD;
+                int z = BLOCK_DEPTH   * (MULTI_GPU ? blockId.z : blockIdx.z) + threadIdx.z;
                 if (x >= m_dimensions[0] || y >= m_dimensions[1] || z >= m_dimensions[2])
                     return 0;
                 
@@ -194,14 +191,17 @@ namespace maps
         
         __device__ __forceinline__ void commit()
         {
-            int xoff = (BLOCK_WIDTH  * blockId.x) * ITEMS_PER_THREAD;
-            int yoff = (BLOCK_HEIGHT * blockId.y) * ROWS_PER_THREAD;
-            int zoff =  BLOCK_DEPTH  * blockId.z;
+            if (!DIRECT_TO_GLOBAL)
+            {
+                int xoff = (BLOCK_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)) * ITEMS_PER_THREAD;
+                int yoff = DIMS < 2 ? 0 : (BLOCK_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)) * ROWS_PER_THREAD;
+                int zoff = DIMS < 3 ? 0 : (BLOCK_DEPTH   * (MULTI_GPU ? blockId.z : blockIdx.z));
 
-            // Commit register array to global memory
-            ArrayToGlobal<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH,
-                          ITEMS_PER_THREAD, ROWS_PER_THREAD, 1>::Write(m_regs, 
-                m_dimensions, m_stride, xoff, yoff, zoff, (T *)m_ptr);
+                // Commit register array to global memory
+                ArrayToGlobal<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH,
+                              ITEMS_PER_THREAD, ROWS_PER_THREAD, 1>::Write(
+                    m_regs, m_dimensions, m_stride, xoff, yoff, zoff, (T *)m_ptr);
+            }
         }
 
         class iterator : public IOutputContainerIterator, 
@@ -214,21 +214,30 @@ namespace maps
                                               ILP_SCHEME, MULTI_GPU> Parent;
 
             Parent& m_parentData;
+            int m_offset;
 
         public:
-            __device__ iterator(Parent& parentData, int pos) :
-                m_parentData(parentData)
+            __device__ iterator(Parent& parentData, int offset, int pos) :
+                m_parentData(parentData), m_offset(offset)
             {
                 m_pos = pos;
             }
             __device__ iterator(const iterator& other) : 
-                m_parentData(other.m_parentData)
+                m_parentData(other.m_parentData), m_offset(other.m_offset)
             {
                 m_pos = other.m_pos;
             }
 
             __device__ __forceinline__ int index() const { return m_pos; }
-            __device__ __forceinline__ T& operator*() { return m_parentData.m_regs[m_pos]; }
+            __device__ __forceinline__ T& operator*() 
+            {
+                if (DIRECT_TO_GLOBAL)
+                    return *((T*)m_parentData.m_ptr + m_offset +
+                             (DIMS == 1 ? m_pos : 
+                              ((m_pos % ITEMS_PER_THREAD) + m_parentData.m_stride * (m_pos / ITEMS_PER_THREAD))));
+                else
+                    return m_parentData.m_regs[m_pos]; 
+            }
             __device__  __forceinline__ iterator& operator++() // Prefix
             {
                 ++m_pos;
@@ -246,53 +255,20 @@ namespace maps
 
         __device__ __forceinline__ iterator begin()
         {
-            return iterator(*this, 0);
+            const int x = (BLOCK_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x) + threadIdx.x) * ITEMS_PER_THREAD;
+            const int y = (DIMS < 2) ? 0 : (m_stride * (BLOCK_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y) + threadIdx.y)) * ROWS_PER_THREAD;
+            const int z = (DIMS < 3) ? 0 : (m_stride * m_dimensions[1] * (BLOCK_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z) + threadIdx.z));
+            
+            return iterator(*this, DIRECT_TO_GLOBAL ? (x+y+z) : 0, 0);
         }
 
         __device__ __forceinline__ iterator end()
         {
-            switch (DIMS)
-            {
-            default:
-                return iterator(*this, ELEMENTS);
-            case 1:
-            {
-                int x = BLOCK_WIDTH * blockId.x + threadIdx.x;
-                
-                // If there are no items to write, return the same iterator as 
-                // begin()
-                if (x >= m_dimensions[0])
-                    return iterator(*this, 0);
-                
-                return iterator(*this, ELEMENTS);
-            }
-            case 2:
-            {
-                int x = BLOCK_WIDTH * blockId.x + threadIdx.x;
-                int y = BLOCK_HEIGHT * blockId.y + threadIdx.y;
+            const int x = (BLOCK_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x) + threadIdx.x) * ITEMS_PER_THREAD;
+            const int y = (DIMS < 2) ? 0 : (m_stride * (BLOCK_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y) + threadIdx.y)) * ROWS_PER_THREAD;
+            const int z = (DIMS < 3) ? 0 : (m_stride * m_dimensions[1] * (BLOCK_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z) + threadIdx.z));
 
-                // If there are no items to write, return the same iterator as 
-                // begin()
-                if (x >= m_dimensions[0] || y >= m_dimensions[1])
-                    return iterator(*this, 0);
-
-                return iterator(*this, ELEMENTS);
-            }
-            case 3:
-            {
-                int x = BLOCK_WIDTH * blockId.x + threadIdx.x;
-                int y = BLOCK_HEIGHT * blockId.y + threadIdx.y;
-                int z = BLOCK_DEPTH * blockId.z + threadIdx.z;
-                
-                // If there are no items to write, return the same iterator as 
-                // begin()
-                if (x >= m_dimensions[0] || y >= m_dimensions[1] || 
-                    z >= m_dimensions[2])
-                    return iterator(*this, 0);
-
-                return iterator(*this, ELEMENTS);
-            }
-            }
+            return iterator(*this, DIRECT_TO_GLOBAL ? (x + y + z) : 0, ELEMENTS);
         }
     };
 }  // namespace maps

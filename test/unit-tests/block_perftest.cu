@@ -64,8 +64,8 @@ GTX 680     | 2.38 ms | 843 us | 190 us |
 
 #define BWILP 16
 #define BHILP 16
-#define IPX 2
-#define IPY 1
+#define IPX 8
+#define IPY 2
 
 // Unique ID for sgemm input matrix textures
 #define MATRIX_A_TEXTURE_UID 2222
@@ -103,11 +103,11 @@ __global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIG
     #pragma unroll
     MAPS_FOREACH(oiter, C)
     {
-        *oiter = Initialize<T>(0);
+        *oiter = T(0);
     }
 
     // Perform the multiplication
-    do
+    for (int j = 0; j < A.chunks(); ++j)
     {
         #pragma unroll
         MAPS_FOREACH(oiter, C)
@@ -125,11 +125,10 @@ __global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIG
 
         // Advance chunks efficiently
         maps::NextChunkAll(A, B);
-    } while (!A.isDone());
+    }
 
     // Write out results
-    if (C.Items() > 0)
-        C.commit();
+    C.commit();
 }
 
 TEST(Performance, Block2D_MatrixMultiplication)

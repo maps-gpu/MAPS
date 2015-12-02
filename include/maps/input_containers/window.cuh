@@ -456,6 +456,11 @@ namespace maps
          * @brief Returns false if there are more chunks to process.
          */
         __device__ __forceinline__ bool isDone() { return true; }
+
+        /**
+        * @brief Returns the total number of chunks, or 0 for dynamic chunks.
+        */
+        __device__ __forceinline__ int chunks() { return 1; }
     };    
 }
 

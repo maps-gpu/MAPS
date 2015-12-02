@@ -180,19 +180,16 @@ namespace maps
                 blockId.y = (__realBlockIdx / grid_dims.x) % grid_dims.y;
                 blockId.z = ((__realBlockIdx / grid_dims.x) / grid_dims.y);
             }
-            else
-                blockId = blockIdx;
-
-          
+                      
             m_sdata = sdata.m_sdata;
             
             // TODO(later): Offset using block index (avoiding partition camping)?
             
             // Load data to shared memory
             LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
-                            (PRINCIPAL_DIM == 0) ? 0 : (SHARED_WIDTH  * blockId.x),
-                            (PRINCIPAL_DIM == 1) ? 0 : (SHARED_HEIGHT * blockId.y),
-                            (PRINCIPAL_DIM == 2) ? 0 : (SHARED_DEPTH  * blockId.z), 
+                            (PRINCIPAL_DIM == 0) ? 0 : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                            DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? 0 : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                            DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? 0 : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
                             m_sdata, 0, m_blocks);
         }
 
@@ -205,9 +202,9 @@ namespace maps
             if (USE_SMEM_DOUBLE_BUFFERING)
             {
                 LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
-                                (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * 1) : (SHARED_WIDTH  * blockId.x),
-                                (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * 1) : (SHARED_HEIGHT * blockId.y),
-                                (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * 1) : (SHARED_DEPTH  * blockId.z),
+                                (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * 1) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * 1) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * 1) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
                                 m_sdata + TOTAL_SHARED, 1, m_blocks);
             }
         }
@@ -411,9 +408,9 @@ namespace maps
                 {                    
                     // Prefetch the other double-buffered block asynchronously
                     LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride, 
-                                    (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * (m_blockInd + 1)) : (SHARED_WIDTH  * blockId.x),
-                                    (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * (m_blockInd + 1)) : (SHARED_HEIGHT * blockId.y),
-                                    (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * (m_blockInd + 1)) : (SHARED_DEPTH  * blockId.z),
+                                    (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * (m_blockInd + 1)) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                    DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * (m_blockInd + 1)) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                    DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * (m_blockInd + 1)) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
                                     m_sdata + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 0)) ? TOTAL_SHARED : 0),
                                     m_blockInd + 1, m_blocks);
                 }
@@ -426,9 +423,9 @@ namespace maps
                                
                     // Load the next block synchronously
                     LoadSync::Read((T *)m_ptr, m_dimensions, m_stride, 
-                                   (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * m_blockInd) : (SHARED_WIDTH  * blockId.x),
-                                   (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * m_blockInd) : (SHARED_HEIGHT * blockId.y),
-                                   (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * m_blockInd) : (SHARED_DEPTH  * blockId.z),
+                                   (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * m_blockInd) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                   DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * m_blockInd) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                   DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * m_blockInd) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
                                    m_sdata, m_blockInd, m_blocks);
                 }
             }
@@ -448,9 +445,9 @@ namespace maps
                 {
                     // Prefetch the other double-buffered block asynchronously
                    LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
-                                   (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * (m_blockInd + 1)) : (SHARED_WIDTH  * blockId.x),
-                                   (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * (m_blockInd + 1)) : (SHARED_HEIGHT * blockId.y),
-                                   (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * (m_blockInd + 1)) : (SHARED_DEPTH  * blockId.z),
+                                   (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * (m_blockInd + 1)) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                   DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * (m_blockInd + 1)) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                   DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * (m_blockInd + 1)) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
                                    m_sdata + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 0)) ? TOTAL_SHARED : 0), m_blockInd + 1, m_blocks);
                 }
             }
@@ -460,9 +457,9 @@ namespace maps
                 {
                     // Load the next block asynchronously
                     LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
-                                    (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * m_blockInd) : (SHARED_WIDTH  * blockId.x),
-                                    (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * m_blockInd) : (SHARED_HEIGHT * blockId.y),
-                                    (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * m_blockInd) : (SHARED_DEPTH  * blockId.z),
+                                    (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * m_blockInd) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                    DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * m_blockInd) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                    DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * m_blockInd) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
                                     m_sdata, m_blockInd, m_blocks);
                 }
             }
@@ -472,6 +469,11 @@ namespace maps
          * @brief Returns false if there are more chunks to process.
          */
         __device__ __forceinline__ bool isDone() { return (m_blockInd >= m_blocks); }
+
+        /**
+         * @brief Returns the total number of chunks, or 0 for dynamic chunks.
+         */
+        __device__ __forceinline__ int chunks() { return m_blocks; }
     };
 
 }  // namespace maps

@@ -62,6 +62,11 @@ GTX 680     | 2.38 ms | 843 us | 190 us |
 #define BW BLOCK_SIZE
 #define BH BLOCK_SIZE
 
+#define BWILP 16
+#define BHILP 16
+#define IPX 2
+#define IPY 1
+
 // Unique ID for sgemm input matrix textures
 #define MATRIX_A_TEXTURE_UID 2222
 #define MATRIX_B_TEXTURE_UID 2223
@@ -88,14 +93,18 @@ __global__ void sgemmNaive(const float *A, size_t aStride,
     C[y * cStride + x] = result;
 }
 
-template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT>
-__global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1,1,1,maps::WB_NOCHECKS, MATRIX_A_TEXTURE_UID, maps::GR_TEXTURE> A,
-                           maps::BlockSingleGPU<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1,1,1,maps::WB_NOCHECKS, MATRIX_B_TEXTURE_UID, maps::GR_TEXTURE> B,
-                           maps::StructuredInjectiveSingleGPU<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> C)
+template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int ILP_X = 1, int ILP_Y = 1>
+__global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y,1,BLOCK_WIDTH, BLOCK_HEIGHT, 1, maps::WB_NOCHECKS, MATRIX_A_TEXTURE_UID, maps::GR_TEXTURE> A,
+                           maps::BlockSingleGPU<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y,1,BLOCK_WIDTH, BLOCK_HEIGHT, 1, maps::WB_NOCHECKS, MATRIX_B_TEXTURE_UID, maps::GR_TEXTURE> B,
+                           maps::StructuredInjectiveSingleGPU<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y> C)
 {
     MAPS_INIT(A, B, C);
 
-    *C.begin() = Initialize<T>(0);
+    #pragma unroll
+    MAPS_FOREACH(oiter, C)
+    {
+        *oiter = Initialize<T>(0);
+    }
 
     // Perform the multiplication
     do
@@ -119,7 +128,8 @@ __global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIG
     } while (!A.isDone());
 
     // Write out results
-    C.commit();
+    if (C.Items() > 0)
+        C.commit();
 }
 
 TEST(Performance, Block2D_MatrixMultiplication)
@@ -173,6 +183,9 @@ TEST(Performance, Block2D_MatrixMultiplication)
 
     dim3 block_dims(BW, BH, 1);
     dim3 grid_dims(maps::RoundUp(width, block_dims.x), maps::RoundUp(height, block_dims.y), 1);
+    
+    dim3 block_dims_ilp(BWILP, BHILP, 1);
+    dim3 grid_dims_ilp(maps::RoundUp(width, block_dims_ilp.x * IPX), maps::RoundUp(height, block_dims_ilp.y * IPY), 1);
 
     // Copy input data to GPU
     CUASSERT_NOERR(cudaMemcpy2DAsync(dev_A, aStride, &host_A[0], sizeof(float)* width,
@@ -201,9 +214,9 @@ TEST(Performance, Block2D_MatrixMultiplication)
     // MAPS
 
     // Create structures
-    maps::BlockSingleGPU<float, 2, 0, BW, BH, 1, 1, 1, 1, maps::WB_NOCHECKS, MATRIX_A_TEXTURE_UID, maps::GR_TEXTURE> A;
-    maps::BlockSingleGPU<float, 2, 1, BW, BH, 1, 1, 1, 1, maps::WB_NOCHECKS, MATRIX_B_TEXTURE_UID, maps::GR_TEXTURE> B;
-    maps::StructuredInjectiveSingleGPU<float, 2, BW, BH, 1> C;
+    maps::BlockSingleGPU<float, 2, 0, BWILP, BHILP, 1, IPX, IPY, 1, BWILP, BHILP, 1, maps::WB_NOCHECKS, MATRIX_A_TEXTURE_UID, maps::GR_TEXTURE> A;
+    maps::BlockSingleGPU<float, 2, 1, BWILP, BHILP, 1, IPX, IPY, 1, BWILP, BHILP, 1, maps::WB_NOCHECKS, MATRIX_B_TEXTURE_UID, maps::GR_TEXTURE> B;
+    maps::StructuredInjectiveSingleGPU<float, 2, BWILP, BHILP, 1, IPX, IPY> C;
 
     A.m_ptr = dev_A;
     A.m_dimensions[0] = width;
@@ -225,7 +238,7 @@ TEST(Performance, Block2D_MatrixMultiplication)
 
     for (int i = 0; i < REPETITIONS; i++)
     {
-        GEMMKernel<float, BW, BH><<<grid_dims, block_dims>>>(A, B, C);
+        GEMMKernel<float, BWILP, BHILP, IPX, IPY><<<grid_dims_ilp, block_dims_ilp>>>(A, B, C);
     }
 
     cudaDeviceSynchronize();

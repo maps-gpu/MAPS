@@ -35,20 +35,24 @@
 namespace maps
 {
 
-    /// @brief Internal Window ND iterator class
+    /// @brief Internal Block 1D iterator class
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-             int IPX, int IPY, int IPZ, BorderBehavior BORDERS, 
-             int TEXTURE_UID, GlobalReadScheme GRS, bool MULTI_GPU>
+             int IPX, int IPY, int IPZ, int CHUNKX, int CHUNKY, int CHUNKZ,
+             int XSTRIDE, BorderBehavior BORDERS, int TEXTURE_UID, 
+             GlobalReadScheme GRS, bool MULTI_GPU>
     class BlockIterator<T, 1, 0, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 
-                        IPY, IPZ, BORDERS, TEXTURE_UID, GRS, MULTI_GPU>
+                        IPY, IPZ, CHUNKX, CHUNKY, CHUNKZ, XSTRIDE, BORDERS, 
+                        TEXTURE_UID, GRS, MULTI_GPU>
       : public std::iterator<std::input_iterator_tag, T>
     {
     protected:
         typedef Block<T, 1, 0, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 
-                      IPY, IPZ, BORDERS, TEXTURE_UID, GRS, MULTI_GPU> Parent;
+                      IPY, IPZ, CHUNKX, CHUNKY, CHUNKZ, BORDERS, 
+                      TEXTURE_UID, GRS, MULTI_GPU> Parent;
 
+        const Parent& m_parent;
         int m_id;
-        const T *m_sParentData;
+        int m_pos;        
 
         __device__  __forceinline__ void next()
         {
@@ -57,24 +61,16 @@ namespace maps
 
     public:
         __device__ BlockIterator(unsigned int pos, unsigned int offset, 
-                                 const Parent& parent)
+                                 const Parent& parent) : m_parent(parent),
+            m_id(0), m_pos(pos + offset)
         {
-            m_id = 0;
-            m_sParentData = parent.m_sdata + pos + offset;
         }
 
-        __device__ BlockIterator(const BlockIterator& other)
+        __device__ BlockIterator(const BlockIterator& other) : m_parent(other.m_parent),
+            m_id(other.m_id), m_pos(other.m_pos)
         {
-            m_id = other.m_id;
-            m_sParentData = other.m_sParentData;
         }
-
-        __device__  __forceinline__ void operator=(const BlockIterator& other)
-        {
-            m_id = other.m_id;
-            m_sParentData = other.m_sParentData;
-        }
-
+        
         __device__ __forceinline__ int index() const
         {
             return m_id;
@@ -82,7 +78,7 @@ namespace maps
 
         __device__ __forceinline__ const T& operator*() const
         {
-            return m_sParentData[m_id];
+            return m_parent.m_sdata[m_pos + m_id];
         }
 
         __device__  __forceinline__ BlockIterator& operator++() // Prefix
@@ -110,56 +106,45 @@ namespace maps
         }
     };
 
-    /// @brief Internal Window ND iterator class
+    /// @brief Internal Block 2D iterator class
     template<typename T, int PRINCIPAL_DIM, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
-             int BLOCK_DEPTH, int IPX, int IPY, int IPZ, 
+             int BLOCK_DEPTH, int IPX, int IPY, int IPZ,
+             int CHUNKX, int CHUNKY, int CHUNKZ, int XSTRIDE,
              BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
              bool MULTI_GPU>
     class BlockIterator<T, 2, PRINCIPAL_DIM, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                        BLOCK_DEPTH, IPX, IPY, IPZ, BORDERS, TEXTURE_UID, GRS, 
-                        MULTI_GPU> 
+                        BLOCK_DEPTH, IPX, IPY, IPZ, CHUNKX, CHUNKY, CHUNKZ, 
+                        XSTRIDE, BORDERS, TEXTURE_UID, GRS, MULTI_GPU> 
         : public std::iterator<std::input_iterator_tag, T>
     {
     protected:
         typedef Block<T, 2, PRINCIPAL_DIM, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                      BLOCK_DEPTH, IPX, IPY, IPZ, BORDERS, TEXTURE_UID, GRS, 
-                      MULTI_GPU> Parent;
+                      BLOCK_DEPTH, IPX, IPY, IPZ, CHUNKX, CHUNKY, CHUNKZ, 
+                      BORDERS, TEXTURE_UID, GRS, MULTI_GPU> Parent;
 
-        T* _pAs;
-        unsigned int _k;
+        const Parent& m_parent;
+        int m_id;
+        int m_pos;
 
     public:
 
         __device__ BlockIterator(unsigned int pos, unsigned int offset, 
-                                 const Parent& parent)
+                                 const Parent& parent) : m_parent(parent),
+            m_id(pos), m_pos(offset)
         {
-            init(pos, offset, parent);
-        }
-
-        __device__ __forceinline__ void init(unsigned int k, 
-                                             unsigned int offset, 
-                                             const Parent& pBlock2D)
-        {
-            _k = k;
-            _pAs = (T *)pBlock2D.m_sdata + offset;
         }
 
         __device__ __forceinline__ unsigned int index() const
         {
-            return _k;
+            return m_id;
         }
 
-        __device__ __forceinline__ const T& operator* () const
-        {
-            if (PRINCIPAL_DIM == 1)
-                return _pAs[(BLOCK_WIDTH + 1)*_k + threadIdx.x];
+        __device__ __forceinline__ const T& operator*() const
+        {            
+            if (PRINCIPAL_DIM == 0)
+                return m_parent.m_sdata[m_pos + m_id];
             else
-            {
-                if (IPZ == 222)
-                    return _pAs[(BLOCK_WIDTH)*threadIdx.x + _k];
-                else
-                    return _pAs[(BLOCK_WIDTH)*threadIdx.y + _k];
-            }
+                return m_parent.m_sdata[m_pos + XSTRIDE*m_id];
         }
 
 
@@ -178,21 +163,16 @@ namespace maps
 
         __device__ __forceinline__ void next()
         {
-            _k++;
+            ++m_id;
         }
 
-        __device__ __forceinline__ void operator=(const BlockIterator &a)
-        {
-            _k = a._k;
-            _pAs = a._pAs;
-        }
         __device__ __forceinline__ bool operator==(const BlockIterator &a)
         {
-            return (_k == a._k);
+            return (m_id == a.m_id);
         }
         __device__ __forceinline__ bool operator!=(const BlockIterator &a)
         {
-            return !(_k == a._k);
+            return !(m_id == a.m_id);
         }
     };
 

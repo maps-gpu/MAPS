@@ -97,12 +97,12 @@ namespace maps
         __device__  __forceinline__ bool operator==(
             const BlockIterator& a) const
         {
-            return (m_sParentData + m_id) == (a.m_sParentData + a.m_id);
+            return m_id == a.m_id;
         }
         __device__  __forceinline__ bool operator!=(
             const BlockIterator& a) const
         {
-            return (m_sParentData + m_id) != (a.m_sParentData + a.m_id);
+            return m_id != a.m_id;
         }
     };
 

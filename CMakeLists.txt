@@ -23,7 +23,10 @@ else()
   set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-gencode;arch=compute_35,code=sm_35;-gencode;arch=compute_37,code=sm_37;-gencode;arch=compute_50,code=sm_50;-gencode;arch=compute_52,code=sm_52;-gencode;arch=compute_52,code=compute_52;-O3;-DNDEBUG;-Xcompiler;-DNDEBUG;-std=c++11)
 endif()
 
-list(APPEND CMAKE_CXX_FLAGS "-std=c++11")
+if (CMAKE_COMPILER_IS_GNUCXX)
+  # Addresses a bug where code is not compiled as C++11 in non-CUDA code and older g++ versions
+  list(APPEND CMAKE_CXX_FLAGS "-std=c++11")
+endif()
 
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 

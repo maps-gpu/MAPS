@@ -224,7 +224,7 @@ namespace maps
         {
             static_assert(sizeof...(indices) == DIMS, 
                           "Input must agree with container dimensions");
-            size_t index_array[] = { indices... };
+            size_t index_array[] = { (size_t)indices... };
                 
             const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : threadIdx.x * IPX) + 
                                          ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
@@ -254,7 +254,7 @@ namespace maps
         {
             static_assert(sizeof...(indices) == DIMS,
                           "Input must agree with container dimensions");
-            size_t index_array[] = { indices... };
+            size_t index_array[] = { (size_t)indices... };
 
             const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : threadIdx.x * IPX) + 
                                          ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);

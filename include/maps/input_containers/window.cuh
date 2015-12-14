@@ -354,7 +354,7 @@ namespace maps
         {
             static_assert(sizeof...(indices) == DIMS, 
                           "Input must agree with container dimensions");
-            int index_array[] = { indices... };
+            int index_array[] = { (int)indices... };
 
             switch (DIMS)
             {
@@ -378,7 +378,7 @@ namespace maps
         {
             static_assert(sizeof...(indices) == DIMS, 
                           "Input must agree with container dimensions");
-            int index_array[] = { indices... };
+            int index_array[] = { (int)indices... };
 
             switch (DIMS)
             {

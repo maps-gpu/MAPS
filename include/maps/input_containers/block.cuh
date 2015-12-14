@@ -91,9 +91,15 @@ namespace maps
             SHARED_HEIGHT = (PRINCIPAL_DIM == 1) ? CHUNKY : CHUNKY * IPY,
             SHARED_DEPTH = (PRINCIPAL_DIM == 2) ? CHUNKZ : CHUNKZ * IPZ,
 
+#if __CUDA_ARCH__ < 300
             // For bank conflict-free transposed read to shared memory.
             SHARED_STRIDE = (DIMS == 2 && PRINCIPAL_DIM == 1) ? 
-                              (SHARED_WIDTH + 1) : SHARED_WIDTH,
+                            (SHARED_WIDTH + 1) : SHARED_WIDTH,
+#else
+            // 128-bit shared loads result in a better speed gain than bank 
+            // conflicts reduce.
+            SHARED_STRIDE = SHARED_WIDTH,
+#endif
 
             TOTAL_SHARED = SHARED_STRIDE * SHARED_HEIGHT * SHARED_DEPTH,
 

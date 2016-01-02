@@ -297,7 +297,7 @@ void TestBlock2DILP(int matrix_width, int matrix_height)
         for (int x = 0; x < matrix_width; ++x)
         {
             int i = y * matrix_width + x;
-            in_val[i] = Initialize<T>(i);            
+            in_val[i] = Initialize<T>(i);
 
             // Compute expected output values
             expected_out_val[TRANSPOSED ? x : y] += in_val[i];
@@ -352,9 +352,9 @@ void TestBlock2DILP(int matrix_width, int matrix_height)
 
 TEST(Block, Block2DILP)
 {
-    size_t width = 1200, height = 2400;
+    size_t width = 3840, height = 2400;
 
-    #define TEST_BLOCK_ILP(IPX, IPY) TestBlock2DILP<float, 32, 8, false, IPX, IPY>(width, height)
+    #define TEST_BLOCK_ILP(IPX, IPY) TestBlock2DILP<float, 16, 16, false, IPX, IPY>(width, height)
 
     // Test various ILP configurations
     TEST_BLOCK_ILP(1, 1);
@@ -376,7 +376,7 @@ TEST(Block, Block2DTILP)
 {
     size_t width = 1200, height = 2400;
 
-    #define TEST_BLOCK_ILP(IPX, IPY) TestBlock2DILP<float, 32, 8, true, IPX, IPY>(width, height)
+    #define TEST_BLOCK_ILP(IPX, IPY) TestBlock2DILP<float, 16, 16, true, IPX, IPY>(width, height)
 
     // Test various ILP configurations
     TEST_BLOCK_ILP(1, 1);
@@ -417,8 +417,8 @@ static const float kEpsilon = 1e-4;
 static const unsigned int kBDIM = 32;
 
 template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT>
-__global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, maps::WB_ZERO> A,
-                           maps::BlockSingleGPU<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, maps::WB_ZERO> B,
+__global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, maps::WB_ZERO> A,
+                           maps::BlockSingleGPU<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, maps::WB_ZERO> B,
                            maps::StructuredInjectiveSingleGPU<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> C)
 {
     __shared__ typename decltype(A)::SharedData a_sdata;
@@ -499,8 +499,8 @@ void TestGEMM(int m, int n, int k)
     CUASSERT_NOERR(cudaMemcpy2D(d_B, B_stride, &host_B[0], sizeof(T) * k, sizeof(T) * k, n, cudaMemcpyHostToDevice));
 
     // Create structures
-    maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, maps::WB_ZERO> A;
-    maps::BlockSingleGPU<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, maps::WB_ZERO> B;
+    maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, maps::WB_ZERO> A;
+    maps::BlockSingleGPU<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, maps::WB_ZERO> B;
     maps::StructuredInjectiveSingleGPU<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> C;
     
     A.m_ptr = d_A;

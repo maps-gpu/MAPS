@@ -94,8 +94,8 @@ __global__ void sgemmNaive(const float *A, size_t aStride,
 }
 
 template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int ILP_X = 1, int ILP_Y = 1>
-__global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y,1,BLOCK_WIDTH, BLOCK_HEIGHT, 1, maps::WB_NOCHECKS, MATRIX_A_TEXTURE_UID, maps::GR_TEXTURE> A,
-                           maps::BlockSingleGPU<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y,1,BLOCK_WIDTH, BLOCK_HEIGHT, 1, maps::WB_NOCHECKS, MATRIX_B_TEXTURE_UID, maps::GR_TEXTURE> B,
+__global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y, 1, maps::WB_NOCHECKS, BLOCK_WIDTH, BLOCK_HEIGHT, 1, MATRIX_A_TEXTURE_UID, maps::GR_TEXTURE> A,
+                           maps::BlockSingleGPU<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y, 1, maps::WB_NOCHECKS, BLOCK_WIDTH, BLOCK_HEIGHT, 1, MATRIX_B_TEXTURE_UID, maps::GR_TEXTURE> B,
                            maps::StructuredInjectiveSingleGPU<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y> C)
 {
     MAPS_INIT(A, B, C);
@@ -213,8 +213,8 @@ TEST(Performance, Block2D_MatrixMultiplication)
     // MAPS
 
     // Create structures
-    maps::BlockSingleGPU<float, 2, 0, BWILP, BHILP, 1, IPX, IPY, 1, BWILP, BHILP, 1, maps::WB_NOCHECKS, MATRIX_A_TEXTURE_UID, maps::GR_TEXTURE> A;
-    maps::BlockSingleGPU<float, 2, 1, BWILP, BHILP, 1, IPX, IPY, 1, BWILP, BHILP, 1, maps::WB_NOCHECKS, MATRIX_B_TEXTURE_UID, maps::GR_TEXTURE> B;
+    maps::BlockSingleGPU<float, 2, 0, BWILP, BHILP, 1, IPX, IPY, 1, maps::WB_NOCHECKS, BWILP, BHILP, 1, MATRIX_A_TEXTURE_UID, maps::GR_TEXTURE> A;
+    maps::BlockSingleGPU<float, 2, 1, BWILP, BHILP, 1, IPX, IPY, 1, maps::WB_NOCHECKS, BWILP, BHILP, 1, MATRIX_B_TEXTURE_UID, maps::GR_TEXTURE> B;
     maps::StructuredInjectiveSingleGPU<float, 2, BWILP, BHILP, 1, IPX, IPY> C;
 
     A.m_ptr = dev_A;

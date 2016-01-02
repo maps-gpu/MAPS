@@ -47,7 +47,7 @@ namespace maps
     {
     protected:
         typedef Block<T, 1, 0, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 
-                      IPY, IPZ, CHUNKX, CHUNKY, CHUNKZ, BORDERS, 
+                      IPY, IPZ, BORDERS, CHUNKX, CHUNKY, CHUNKZ,
                       TEXTURE_UID, GRS, MULTI_GPU> Parent;
 
         const Parent& m_parent;
@@ -119,8 +119,9 @@ namespace maps
     {
     protected:
         typedef Block<T, 2, PRINCIPAL_DIM, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                      BLOCK_DEPTH, IPX, IPY, IPZ, CHUNKX, CHUNKY, CHUNKZ, 
-                      BORDERS, TEXTURE_UID, GRS, MULTI_GPU> Parent;
+                      BLOCK_DEPTH, IPX, IPY, IPZ, BORDERS, 
+                      CHUNKX, CHUNKY, CHUNKZ,
+                      TEXTURE_UID, GRS, MULTI_GPU> Parent;
 
         const Parent& m_parent;
         int m_id;

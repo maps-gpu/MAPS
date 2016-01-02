@@ -37,22 +37,22 @@ namespace maps
 {
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX = 1, int IPY = 1, 
-             int IPZ = 1, int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT,
-             int CHUNKZ = BLOCK_DEPTH, BorderBehavior BORDERS = WB_NOCHECKS, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT, 
-             bool MULTI_GPU = true>
+             int IPZ = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT,
+             int CHUNKZ = BLOCK_DEPTH, int TEXTURE_UID = -1, 
+             GlobalReadScheme GRS = GR_DISTINCT, bool MULTI_GPU = true>
     class Block;
 
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX = 1, int IPY = 1, 
-             int IPZ = 1, int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT,
-             int CHUNKZ = BLOCK_DEPTH, BorderBehavior BORDERS = WB_NOCHECKS,
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT, 
-             bool MULTI_GPU = true>
+             int IPZ = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT,
+             int CHUNKZ = BLOCK_DEPTH, int TEXTURE_UID = -1, 
+             GlobalReadScheme GRS = GR_DISTINCT>
     using BlockSingleGPU = Block<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, 
                                  BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, 
-                                 CHUNKX, CHUNKY, CHUNKZ,
-                                 BORDERS, TEXTURE_UID, GRS, false>;
+                                 BORDERS, CHUNKX, CHUNKY, CHUNKZ,
+                                 TEXTURE_UID, GRS, false>;
 
 
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
@@ -65,9 +65,8 @@ namespace maps
     
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX, int IPY, int IPZ, 
-             int CHUNKX, int CHUNKY, int CHUNKZ,
-             BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
-             bool MULTI_GPU>
+             BorderBehavior BORDERS, int CHUNKX, int CHUNKY, int CHUNKZ,
+             int TEXTURE_UID, GlobalReadScheme GRS, bool MULTI_GPU>
     class Block : public IInputContainer
     {
         MAPS_STATIC_ASSERT((DIMS >= 1 && DIMS <= 2), 

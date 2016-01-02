@@ -33,8 +33,10 @@ Expected Results
 GPU Model   |  Naive  |  MAPS  |  MAPST  | MAPST-ILP
 ------------+---------+--------+---------|-----------
 TITAN BLACK | 348 us  |  88 us |  79 us  |  TBD us
-GTX 680     | 500 us  | 141 us | 131 us  |  TBD us
+GTX 780     | 414 us  | 143 us | 123 us  |   55 us
+GTX 680     | 504 us  | 148 us | 136 us  |   70 us
 GTX 730M    | 2855 us | 967 us | 748 us  |  343 us
+
 */
 
 #include <cstdio>

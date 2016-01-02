@@ -32,8 +32,9 @@ Expected Results
 ----------------
 GPU Model   |  Naive  |  MAPS  | CUBLAS |
 ------------+---------+--------+--------|
-TITAN BLACK | 1.49 ms | 504 us | 160 us |
-GTX 680     | 2.38 ms | 843 us | 190 us |
+TITAN BLACK | 1.49 ms | TBD us | 160 us |
+GTX 780     | 1.89 ms | 353 us | 171 us |
+GTX 680     | 2.38 ms | 383 us | 189 us |
 
 */
 

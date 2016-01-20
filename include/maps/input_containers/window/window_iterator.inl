@@ -34,21 +34,25 @@
 
 namespace maps {
 
-    // TODO: ILP
-
     /// @brief Internal Window ND iterator class
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
              int WINDOW_APRON, int IPX, int IPY, int IPZ, 
              BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
-             bool MULTI_GPU>
+             bool USE_REGISTERS, int XSTRIDE, bool MULTI_GPU>
     class WindowIterator<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
                          WINDOW_APRON, IPX, IPY, IPZ, BORDERS, TEXTURE_UID, GRS,
-                         MULTI_GPU> 
+                         USE_REGISTERS, XSTRIDE, MULTI_GPU> 
         : public std::iterator<std::input_iterator_tag, T>
     {
+        typedef Window<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT,
+                       BLOCK_DEPTH, WINDOW_APRON, IPX, IPY,
+                       IPZ, BORDERS, TEXTURE_UID, GRS,
+                       MULTI_GPU> Parent;
     protected:
+
         int m_id;
-        const T *m_sParentData;
+        int m_pos;
+        const Parent& m_parent;
 
         __device__  __forceinline__ void next()
         {
@@ -56,27 +60,18 @@ namespace maps {
         }
     public:
         __device__ WindowIterator(
-            unsigned int pos, const Window<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                                           BLOCK_DEPTH, WINDOW_APRON, IPX, IPY,
-                                           IPZ, BORDERS, TEXTURE_UID, GRS, 
-                                           MULTI_GPU>& parent)
+            unsigned int pos, const Parent& parent) : m_parent(parent)
         {
             m_id = 0;
-            m_sParentData = parent.m_sdata + pos;
+            m_pos = pos;
         }
 
-        __device__ WindowIterator(const WindowIterator& other)
+        __device__ WindowIterator(const WindowIterator& other) : m_parent(other.m_parent)
         {
             m_id = other.m_id;
-            m_sParentData = other.m_sParentData;
+            m_pos = other.m_pos;
         }
-
-        __device__  __forceinline__ void operator=(const WindowIterator& other)
-        {
-            m_id = other.m_id;
-            m_sParentData = other.m_sParentData;
-        }
-
+        
         __device__ __forceinline__ int index() const
         {
             return m_id;
@@ -84,7 +79,10 @@ namespace maps {
 
         __device__ __forceinline__ const T& operator*() const
         {
-            return m_sParentData[m_id];
+            if (USE_REGISTERS)
+                return m_parent.m_regs[m_id + m_pos];
+            else
+                return m_parent.m_sdata[m_id + m_pos];
         }
 
         __device__  __forceinline__ WindowIterator& operator++() // Prefix
@@ -103,12 +101,12 @@ namespace maps {
         __device__  __forceinline__ bool operator==(
             const WindowIterator& a) const
         {
-            return (m_sParentData + m_id) == (a.m_sParentData + a.m_id);
+            return (m_pos + m_id) == (a.m_pos + a.m_id);
         }
         __device__  __forceinline__ bool operator!=(
             const WindowIterator& a) const
         {
-            return (m_sParentData + m_id) != (a.m_sParentData + a.m_id);
+            return (m_pos + m_id) != (a.m_pos + a.m_id);
         }
     };
 
@@ -116,21 +114,24 @@ namespace maps {
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
              int WINDOW_APRON, int IPX, int IPY, int IPZ, 
              BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
-             bool MULTI_GPU>
+             bool USE_REGISTERS, int XSTRIDE, bool MULTI_GPU>
     class WindowIterator<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
                          WINDOW_APRON, IPX, IPY, IPZ, BORDERS, TEXTURE_UID, GRS,
-                         MULTI_GPU> 
+                         USE_REGISTERS, XSTRIDE, MULTI_GPU>
         : public std::iterator<std::input_iterator_tag, T>
     {
+        typedef Window<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT,
+                       BLOCK_DEPTH, WINDOW_APRON, IPX, IPY,
+                       IPZ, BORDERS, TEXTURE_UID, GRS,
+                       MULTI_GPU> Parent;
     protected:
         unsigned int m_pos;
         int m_id;
-        const T *m_sParentData;
+        const Parent& m_parent;
         int m_initialOffset;
 
         enum
         {
-            XSHARED = (BLOCK_WIDTH + WINDOW_APRON * 2),
             WIND_WIDTH = (WINDOW_APRON * 2 + 1),
         };
 
@@ -138,37 +139,24 @@ namespace maps {
         {
             m_id++;
             m_pos = m_initialOffset + (m_id % WIND_WIDTH) + 
-                ((m_id / WIND_WIDTH)* XSHARED);
+                ((m_id / WIND_WIDTH) * XSTRIDE);
         }
     public:
         __device__ WindowIterator(
-            unsigned int pos, const Window<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                                           BLOCK_DEPTH, WINDOW_APRON, IPX, IPY,
-                                           IPZ, BORDERS, TEXTURE_UID, GRS, 
-                                           MULTI_GPU>& parent)
+            unsigned int pos, const Parent& parent) : m_parent(parent)
         {
             m_pos = pos;
-            m_sParentData = parent.m_sdata;
             m_id = 0;
             m_initialOffset = pos;
         }
 
-        __device__ WindowIterator(const WindowIterator& other)
+        __device__ WindowIterator(const WindowIterator& other) : m_parent(other.m_parent)
         {
             m_pos = other.m_pos;
-            m_sParentData = other.m_sParentData;
             m_id = other.m_id;
             m_initialOffset = other.m_initialOffset;
         }
-
-        __device__  __forceinline__ void operator=(const WindowIterator& a)
-        {
-            m_id = a.m_id;
-            m_pos = a.m_pos;
-            m_initialOffset = a.m_initialOffset;
-            m_sParentData = a.m_sParentData;
-        }
-
+        
         __device__ __forceinline__ int index() const
         {
             return m_id;
@@ -176,7 +164,10 @@ namespace maps {
 
         __device__ __forceinline__ const T& operator*() const
         {
-            return m_sParentData[m_pos];
+            if (USE_REGISTERS)
+                return m_parent.m_regs[m_pos];
+            else
+                return m_parent.m_sdata[m_pos];
         }
 
         __device__  __forceinline__ WindowIterator& operator++() // Prefix
@@ -201,142 +192,6 @@ namespace maps {
             const WindowIterator& a) const
         {
             return m_pos != a.m_pos;
-        }
-    };
-
-    /// @brief Internal Window ND iterator class specialization for 0-sized 
-    /// apron (single-valued iterator, up to ILP)
-    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-             int IPX, int IPY, int IPZ, BorderBehavior BORDERS, int TEXTURE_UID,
-             GlobalReadScheme GRS, bool MULTI_GPU>
-    class WindowIterator<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 0, IPX, 
-                         IPY, IPZ, BORDERS, TEXTURE_UID, GRS, MULTI_GPU> 
-        : public std::iterator<std::input_iterator_tag, T>
-    {
-    protected:
-        typedef Window<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 0, IPX, 
-                       IPY, IPZ, BORDERS, TEXTURE_UID, GRS, MULTI_GPU> Parent;
-
-        int m_id;
-        const Parent& m_sParent;
-
-        __device__  __forceinline__ void next()
-        {
-            m_id++;
-        }
-    public:
-        __device__ WindowIterator(unsigned int pos, const Parent& parent) : 
-            m_sParent(parent)
-        {
-            m_id = pos;
-        }
-
-        __device__ WindowIterator(const WindowIterator& other) : 
-            m_sParent(other.m_sParent)
-        {
-            m_id = other.m_id;
-        }
-
-        __device__ __forceinline__ int index() const
-        {
-            return m_id;
-        }
-
-        __device__ __forceinline__ const T& operator*() const
-        {
-            return m_sParent.m_regs[m_id];
-        }
-
-        __device__  __forceinline__ WindowIterator& operator++() // Prefix
-        {
-            next();
-            return *this;
-        }
-
-        __device__  __forceinline__ WindowIterator operator++(int) // Postfix
-        {
-            WindowIterator temp(*this);
-            next();
-            return temp;
-        }
-
-        __device__  __forceinline__ bool operator==(
-            const WindowIterator& a) const
-        {
-            return m_id == a.m_id;
-        }
-        __device__  __forceinline__ bool operator!=(
-            const WindowIterator& a) const
-        {
-            return m_id != a.m_id;
-        }
-    };
-
-    /// @brief Internal Window ND iterator class specialization for 0-sized 
-    /// apron (single-valued iterator, up to ILP)
-    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-             int IPX, int IPY, int IPZ, BorderBehavior BORDERS, int TEXTURE_UID,
-             GlobalReadScheme GRS, bool MULTI_GPU>
-    class WindowIterator<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 0, IPX, 
-                         IPY, IPZ, BORDERS, TEXTURE_UID, GRS, MULTI_GPU> 
-        : public std::iterator<std::input_iterator_tag, T>
-    {
-    protected:
-        typedef Window<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 0, IPX, 
-                       IPY, IPZ, BORDERS, TEXTURE_UID, GRS, MULTI_GPU> Parent;
-
-        int m_id;
-        const Parent& m_sParent;
-
-        __device__  __forceinline__ void next()
-        {
-            m_id++;
-        }
-    public:
-        __device__ WindowIterator(unsigned int pos, const Parent& parent) : 
-            m_sParent(parent)
-        {
-            m_id = pos;
-        }
-
-        __device__ WindowIterator(const WindowIterator& other) : 
-            m_sParent(other.m_sParent)
-        {
-            m_id = other.m_id;
-        }
-
-        __device__ __forceinline__ int index() const
-        {
-            return m_id;
-        }
-
-        __device__ __forceinline__ const T& operator*() const
-        {
-            return m_sParent.m_regs[m_id];
-        }
-
-        __device__  __forceinline__ WindowIterator& operator++() // Prefix
-        {
-            next();
-            return *this;
-        }
-
-        __device__  __forceinline__ WindowIterator operator++(int) // Postfix
-        {
-            WindowIterator temp(*this);
-            next();
-            return temp;
-        }
-
-        __device__  __forceinline__ bool operator==(
-            const WindowIterator& a) const
-        {
-            return m_id == a.m_id;
-        }
-        __device__  __forceinline__ bool operator!=(
-            const WindowIterator& a) const
-        {
-            return m_id != a.m_id;
         }
     };
 

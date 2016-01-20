@@ -89,7 +89,7 @@ namespace maps
             Datum(Dimension... dims) : m_hostptr(nullptr), m_hostStride(0)
             {
                 static_assert(sizeof...(dims) == DIMS, "Input dimensions must agree with data parameters");
-                size_t dim_array[] = { dims... };
+                size_t dim_array[] = { (size_t)dims... };
 
                 int i = 0;
                 for (size_t dim : dim_array)

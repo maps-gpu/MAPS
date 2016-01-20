@@ -38,22 +38,111 @@ namespace maps
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX = 1, int IPY = 1, 
              int IPZ = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT, 
-             bool MULTI_GPU = true>
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT,
+             int CHUNKZ = BLOCK_DEPTH, int TEXTURE_UID = -1, 
+             GlobalReadScheme GRS = GR_DISTINCT, bool MULTI_GPU = true>
     class Block;
 
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX = 1, int IPY = 1, 
              int IPZ = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT, 
-             bool MULTI_GPU = true>
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT,
+             int CHUNKZ = BLOCK_DEPTH, int TEXTURE_UID = -1, 
+             GlobalReadScheme GRS = GR_DISTINCT>
     using BlockSingleGPU = Block<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, 
                                  BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, 
-                                 BORDERS, TEXTURE_UID, GRS, false>;
+                                 BORDERS, CHUNKX, CHUNKY, CHUNKZ,
+                                 TEXTURE_UID, GRS, false>;
 
+    // Type aliases
+
+    template<typename T, int BLOCK_WIDTH, int IPX = 1, int BLOCK_HEIGHT = 1, 
+             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
+             int CHUNKX = BLOCK_WIDTH, int TEXTURE_UID = -1, 
+             GlobalReadScheme GRS = GR_DISTINCT, bool MULTI_GPU = true>
+    using Block1D = Block<T, 1, 0, BLOCK_WIDTH, 
+                          BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 1, 1, 
+                          BORDERS, CHUNKX, 1, 1,
+                          TEXTURE_UID, GRS, MULTI_GPU>;
+
+
+    template<typename T, int BLOCK_WIDTH, int IPX = 1, int BLOCK_HEIGHT = 1,
+             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
+             int CHUNKX = BLOCK_WIDTH, int TEXTURE_UID = -1, 
+             GlobalReadScheme GRS = GR_DISTINCT>
+    using Block1DSingleGPU = Block<T, 1, 0, BLOCK_WIDTH, 
+                                   BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 1, 1, 
+                                   BORDERS, CHUNKX, 1, 1,
+                                   TEXTURE_UID, GRS, false>;
+
+    template<typename T, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
+             int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, 
+             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT,
+             bool MULTI_GPU = true>
+    using Block2D = Block<T, 2, PRINCIPAL_DIM, BLOCK_WIDTH, 
+                          BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                          BORDERS, CHUNKX, CHUNKY, 1,
+                          TEXTURE_UID, GRS, MULTI_GPU>;
+
+    template<typename T, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
+             int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, 
+             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+    using Block2DSingleGPU = Block<T, 2, PRINCIPAL_DIM, BLOCK_WIDTH, 
+                                   BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                                   BORDERS, CHUNKX, CHUNKY, 1,
+                                   TEXTURE_UID, GRS, false>;
+
+    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
+             int IPY = 1, int BLOCK_DEPTH = 1, 
+             BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT,
+             bool MULTI_GPU = true>
+    using Block2DX = Block<T, 2, 0, BLOCK_WIDTH, 
+                           BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                           BORDERS, CHUNKX, CHUNKY, 1,
+                           TEXTURE_UID, GRS, MULTI_GPU>;
+
+    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
+             int IPY = 1, int BLOCK_DEPTH = 1, 
+             BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+    using Block2DXSingleGPU = Block<T, 2, 0, BLOCK_WIDTH, 
+                                   BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                                   BORDERS, CHUNKX, CHUNKY, 1,
+                                   TEXTURE_UID, GRS, false>;
+
+    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
+             int IPY = 1, int BLOCK_DEPTH = 1, 
+             BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT,
+             bool MULTI_GPU = true>
+    using Block2DY = Block<T, 2, 1, BLOCK_WIDTH, 
+                           BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                           BORDERS, CHUNKX, CHUNKY, 1,
+                           TEXTURE_UID, GRS, MULTI_GPU>;
+
+    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
+             int IPY = 1, int BLOCK_DEPTH = 1, 
+             BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+    using Block2DYSingleGPU = Block<T, 2, 1, BLOCK_WIDTH, 
+                                   BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                                   BORDERS, CHUNKX, CHUNKY, 1,
+                                   TEXTURE_UID, GRS, false>;
+
+    /////////////////
 
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX, int IPY, int IPZ, 
+             int CHUNKX, int CHUNKY, int CHUNKZ, int XSTRIDE,
              BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
              bool MULTI_GPU>
     class BlockIterator;
@@ -61,8 +150,8 @@ namespace maps
     
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX, int IPY, int IPZ, 
-             BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
-             bool MULTI_GPU>
+             BorderBehavior BORDERS, int CHUNKX, int CHUNKY, int CHUNKZ,
+             int TEXTURE_UID, GlobalReadScheme GRS, bool MULTI_GPU>
     class Block : public IInputContainer
     {
         MAPS_STATIC_ASSERT((DIMS >= 1 && DIMS <= 2), 
@@ -75,14 +164,28 @@ namespace maps
         MAPS_STATIC_ASSERT(BLOCK_HEIGHT > 0, "Block height must be positive");
         MAPS_STATIC_ASSERT(BLOCK_DEPTH > 0, "Block depth must be positive");
         MAPS_STATIC_ASSERT(IPX > 0, "Items per thread must be positive");
-        
+        // TODO: More static assertions
+        MAPS_STATIC_ASSERT(PRINCIPAL_DIM == 0 || BLOCK_WIDTH == CHUNKX, "Chunk X dimension must be equal to block width");
+        MAPS_STATIC_ASSERT(DIMS < 2 || (PRINCIPAL_DIM == 1 || BLOCK_HEIGHT == CHUNKY), "Chunk Y dimension must be equal to block height");
+        MAPS_STATIC_ASSERT(DIMS < 3 || (PRINCIPAL_DIM == 2 || BLOCK_DEPTH  == CHUNKZ), "Chunk Z dimension must be equal to block depth");
+
         enum
         {
+            SHARED_WIDTH = (PRINCIPAL_DIM == 0) ? CHUNKX : CHUNKX * IPX,
+            SHARED_HEIGHT = (PRINCIPAL_DIM == 1) ? CHUNKY : CHUNKY * IPY,
+            SHARED_DEPTH = (PRINCIPAL_DIM == 2) ? CHUNKZ : CHUNKZ * IPZ,
+
+#if __CUDA_ARCH__ < 300
             // For bank conflict-free transposed read to shared memory.
             SHARED_STRIDE = (DIMS == 2 && PRINCIPAL_DIM == 1) ? 
-                              (BLOCK_WIDTH + 1) : BLOCK_WIDTH,
+                            (SHARED_WIDTH + 1) : SHARED_WIDTH,
+#else
+            // 128-bit shared loads result in a better speed gain than bank 
+            // conflicts reduce.
+            SHARED_STRIDE = SHARED_WIDTH,
+#endif
 
-            TOTAL_SHARED = SHARED_STRIDE * BLOCK_HEIGHT * BLOCK_DEPTH,
+            TOTAL_SHARED = SHARED_STRIDE * SHARED_HEIGHT * SHARED_DEPTH,
 
             // OPTIMIZATION: Double-buffer shared memory (read next buffer 
             // while operating on current, conserves one __syncthreads() 
@@ -93,9 +196,9 @@ namespace maps
     public:
         enum
         {
-            PRINCIPAL_BLOCK_DIM = ((PRINCIPAL_DIM == 0) ? BLOCK_WIDTH :
-                                   ((PRINCIPAL_DIM == 1) ? BLOCK_HEIGHT :
-                                    BLOCK_DEPTH)),
+            PRINCIPAL_BLOCK_DIM = ((PRINCIPAL_DIM == 0) ? SHARED_WIDTH :
+                                   ((PRINCIPAL_DIM == 1) ? SHARED_HEIGHT :
+                                    SHARED_DEPTH)),
 
             ELEMENTS = PRINCIPAL_BLOCK_DIM,
             SYNC_AFTER_NEXTCHUNK = !USE_SMEM_DOUBLE_BUFFERING,
@@ -122,9 +225,18 @@ namespace maps
         // Define iterator classes
         typedef BlockIterator<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, 
                               BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, 
+                              CHUNKX, CHUNKY, CHUNKZ, SHARED_STRIDE,
                               BORDERS, TEXTURE_UID, GRS, MULTI_GPU> iterator;
         typedef iterator const_iterator;
-        
+       
+        // Define block loaders
+        typedef GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
+                               SHARED_WIDTH, SHARED_STRIDE, SHARED_HEIGHT, SHARED_DEPTH, false, BORDERS,
+                               ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), TEXTURE_UID> LoadSync;
+        typedef GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
+                               SHARED_WIDTH, SHARED_STRIDE, SHARED_HEIGHT, SHARED_DEPTH, true, BORDERS,
+                               ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), TEXTURE_UID> LoadAsync;
+
         /**
          * @brief Initializes the container.
          * @param[in] sdata SharedData structure (allocated on shared memory).
@@ -158,23 +270,17 @@ namespace maps
                 blockId.y = (__realBlockIdx / grid_dims.x) % grid_dims.y;
                 blockId.z = ((__realBlockIdx / grid_dims.x) / grid_dims.y);
             }
-            else
-                blockId = blockIdx;
-
-          
+                      
             m_sdata = sdata.m_sdata;
             
             // TODO(later): Offset using block index (avoiding partition camping)?
             
             // Load data to shared memory
-            GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
-                           BLOCK_WIDTH, SHARED_STRIDE, BLOCK_HEIGHT, 
-                           BLOCK_DEPTH, true, BORDERS, 
-                           ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), 
-                TEXTURE_UID>::Read((T *)m_ptr, m_dimensions, m_stride, 
-                    (PRINCIPAL_DIM == 0) ? 0 : (BLOCK_WIDTH  * blockId.x),
-                    (PRINCIPAL_DIM == 1) ? 0 : (BLOCK_HEIGHT * blockId.y),
-                    0, m_sdata, 0, m_blocks);
+            LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
+                            (PRINCIPAL_DIM == 0) ? 0 : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                            DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? 0 : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                            DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? 0 : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
+                            m_sdata, 0, m_blocks);
         }
 
         /**
@@ -185,59 +291,59 @@ namespace maps
             // If double-buffered, start loading the next batch to shared already
             if (USE_SMEM_DOUBLE_BUFFERING)
             {
-                GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH,
-                               BLOCK_WIDTH, SHARED_STRIDE, BLOCK_HEIGHT, 
-                               BLOCK_DEPTH, true, BORDERS, 
-                               ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), 
-                    TEXTURE_UID>::Read((T *)m_ptr, m_dimensions, m_stride, 
-                                       (PRINCIPAL_DIM == 0) ? (BLOCK_WIDTH  * 1) : (BLOCK_WIDTH  * blockId.x),
-                                       (PRINCIPAL_DIM == 1) ? (BLOCK_HEIGHT * 1) : (BLOCK_HEIGHT * blockId.y),
-                                       0, m_sdata + TOTAL_SHARED, 1, m_blocks);
+                LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
+                                (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * 1) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * 1) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * 1) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
+                                m_sdata + TOTAL_SHARED, 1, m_blocks);
             }
         }
 
+
         /**
-         * @brief Returns the value at the thread-relative index in the range [-APRON, APRON].
+         * @brief Returns the value at the thread-relative index in the range [0, CHUNK_DIM).
          */
         template<typename... Index>
         __device__ __forceinline__ const T& at(Index... indices) const
         {
             static_assert(sizeof...(indices) == DIMS, 
                           "Input must agree with container dimensions");
-            size_t index_array[] = { indices... };
+            size_t index_array[] = { (size_t)indices... };
                 
-            const unsigned int OFFSETX = threadIdx.x + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
-            const unsigned int OFFSETY = threadIdx.y;
-                const unsigned int OFFSETZ = threadIdx.z;
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : threadIdx.x * IPX) + 
+                                         ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : threadIdx.y * IPY);
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : threadIdx.z * IPZ);
 
-                switch (DIMS)
-                {
-                default:
-                case 1:
-                    return m_sdata[(OFFSETX + index_array[0])];
-                case 2:
-                    return m_sdata[(OFFSETX + index_array[0]) +
-                                   (OFFSETY + index_array[1]) * SHARED_STRIDE];
-                case 3:
-                    return m_sdata[(OFFSETX + index_array[0]) + 
-                                   (OFFSETY + index_array[1]) * SHARED_STRIDE + 
-                                   (OFFSETZ + index_array[2]) * SHARED_STRIDE * BLOCK_HEIGHT];
-                }
+            switch (DIMS)
+            {
+            default:
+            case 1:
+                return m_sdata[(OFFSETX + index_array[0])];
+            case 2:
+                return m_sdata[(OFFSETX + index_array[0]) +
+                                (OFFSETY + index_array[1]) * SHARED_STRIDE];
+            case 3:
+                return m_sdata[(OFFSETX + index_array[0]) + 
+                                (OFFSETY + index_array[1]) * SHARED_STRIDE + 
+                                (OFFSETZ + index_array[2]) * SHARED_STRIDE * SHARED_HEIGHT];
+            }
         }
 
         /**
-         * @brief Returns the value at the thread-relative index in the range [-APRON, APRON].
+         * @brief Returns the value at the thread-relative index in the range [0, CHUNK_DIM).
          */
         template<typename... Index>
         __device__ __forceinline__ const T& aligned_at(IOutputContainerIterator& oiter, Index... indices) const
         {
             static_assert(sizeof...(indices) == DIMS,
                           "Input must agree with container dimensions");
-            size_t index_array[] = { indices... };
+            size_t index_array[] = { (size_t)indices... };
 
-            const unsigned int OFFSETX = threadIdx.x + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
-            const unsigned int OFFSETY = threadIdx.y;
-            const unsigned int OFFSETZ = threadIdx.z;
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : threadIdx.x * IPX) + 
+                                         ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : threadIdx.y * IPY);
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : threadIdx.z * IPZ);
             
             switch (DIMS)
             {
@@ -250,7 +356,7 @@ namespace maps
             case 3:
                 return m_sdata[(OFFSETX + index_array[0] + (oiter.m_pos % IPX)) +
                                (OFFSETY + index_array[1] + ((oiter.m_pos / IPX) % IPY)) * SHARED_STRIDE +
-                               (OFFSETZ + index_array[2] + ((oiter.m_pos / IPX) / IPY)) * SHARED_STRIDE * BLOCK_HEIGHT];
+                               (OFFSETZ + index_array[2] + ((oiter.m_pos / IPX) / IPY)) * SHARED_STRIDE * SHARED_HEIGHT];
             }
         }
 
@@ -260,10 +366,25 @@ namespace maps
          */
         __device__ __forceinline__ iterator begin() const
         {
-            return iterator(0, 
-                            ((USE_SMEM_DOUBLE_BUFFERING && 
-                              (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0), 
-                            *this);
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : threadIdx.x * IPX) +
+                ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : threadIdx.y * IPY);
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : threadIdx.z * IPZ);
+
+
+            switch (DIMS)
+            {
+            default:
+            case 1:
+                return iterator(0, OFFSETX, *this);
+
+            case 2:
+                return iterator(0, OFFSETX + OFFSETY * SHARED_STRIDE, *this);
+
+            case 3:
+                return iterator(0, OFFSETX + OFFSETY * SHARED_STRIDE + 
+                                OFFSETZ * SHARED_STRIDE * SHARED_HEIGHT, *this);
+            }
         }
         
         /**
@@ -272,10 +393,25 @@ namespace maps
          */
         __device__ __forceinline__ iterator end() const
         {
-            return iterator(ELEMENTS, 
-                            ((USE_SMEM_DOUBLE_BUFFERING && 
-                              (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0), 
-                            *this);
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : threadIdx.x * IPX) +
+                ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : threadIdx.y * IPY);
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : threadIdx.z * IPZ);
+
+
+            switch (DIMS)
+            {
+            default:
+            case 1:
+                return iterator(ELEMENTS, OFFSETX, *this);
+
+            case 2:
+                return iterator(ELEMENTS, OFFSETX + OFFSETY * SHARED_STRIDE, *this);
+
+            case 3:
+                return iterator(ELEMENTS, OFFSETX + OFFSETY * SHARED_STRIDE +
+                                OFFSETZ * SHARED_STRIDE * SHARED_HEIGHT, *this);
+            }
         }
         
         /**
@@ -284,11 +420,32 @@ namespace maps
          */
         __device__ __forceinline__ iterator align(IOutputContainerIterator& oiter) const
         {
-            // TODO: Support ILP (using the 2nd parameter)
-            return iterator(0, 
-                            ((USE_SMEM_DOUBLE_BUFFERING && 
-                              (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0), 
-                            *this);
+            const unsigned int ILPOFFX = (DIMS == 1 ? oiter.m_pos :
+                                          oiter.m_pos % IPX);
+            const unsigned int ILPOFFY = (DIMS == 1 ? 0 :
+                                          DIMS == 2 ? oiter.m_pos / IPX :
+                                          (oiter.m_pos / IPX) % IPY);
+            const unsigned int ILPOFFZ = (DIMS < 3 ? 0 : oiter.m_pos / IPX / IPY);
+
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (threadIdx.x * IPX + ILPOFFX)) +
+                ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (threadIdx.y * IPY + ILPOFFY));
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (threadIdx.z * IPZ + ILPOFFZ));
+
+
+            switch (DIMS)
+            {
+            default:
+            case 1:
+                return iterator(0, OFFSETX, *this);
+
+            case 2:
+                return iterator(0, OFFSETX + OFFSETY * SHARED_STRIDE, *this);
+
+            case 3:
+                return iterator(0, OFFSETX + OFFSETY * SHARED_STRIDE +
+                                OFFSETZ * SHARED_STRIDE * SHARED_HEIGHT, *this);
+            }
         }
 
         /**
@@ -297,11 +454,32 @@ namespace maps
          */
         __device__ __forceinline__ iterator end_aligned(IOutputContainerIterator& oiter) const
         {
-            // TODO: Support ILP (using the 2nd parameter)
-            return iterator(ELEMENTS, 
-                            ((USE_SMEM_DOUBLE_BUFFERING && 
-                              (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0), 
-                            *this);
+            const unsigned int ILPOFFX = (DIMS == 1 ? oiter.m_pos :
+                                          oiter.m_pos % IPX);
+            const unsigned int ILPOFFY = (DIMS == 1 ? 0 :
+                                          DIMS == 2 ? oiter.m_pos / IPX :
+                                          (oiter.m_pos / IPX) % IPY);
+            const unsigned int ILPOFFZ = (DIMS < 3 ? 0 : oiter.m_pos / IPX / IPY);
+
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (threadIdx.x * IPX + ILPOFFX)) +
+                ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (threadIdx.y * IPY + ILPOFFY));
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (threadIdx.z * IPZ + ILPOFFZ));
+
+
+            switch (DIMS)
+            {
+            default:
+            case 1:
+                return iterator(ELEMENTS, OFFSETX, *this);
+
+            case 2:
+                return iterator(ELEMENTS, OFFSETX + OFFSETY * SHARED_STRIDE, *this);
+
+            case 3:
+                return iterator(ELEMENTS, OFFSETX + OFFSETY * SHARED_STRIDE +
+                                OFFSETZ * SHARED_STRIDE * SHARED_HEIGHT, *this);
+            }
         }
 
         /**
@@ -319,16 +497,12 @@ namespace maps
                 if (m_blockInd < (m_blocks - 1))
                 {                    
                     // Prefetch the other double-buffered block asynchronously
-                    GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                                   BLOCK_DEPTH, BLOCK_WIDTH, SHARED_STRIDE, 
-                                   BLOCK_HEIGHT, BLOCK_DEPTH,
-                                   true, BORDERS, 
-                                   ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), 
-                        TEXTURE_UID>::Read((T *)m_ptr, m_dimensions, m_stride, 
-                                           (PRINCIPAL_DIM == 0) ? (BLOCK_WIDTH  * (m_blockInd + 1)) : (BLOCK_WIDTH  * blockId.x),
-                                           (PRINCIPAL_DIM == 1) ? (BLOCK_HEIGHT * (m_blockInd + 1)) : (BLOCK_HEIGHT * blockId.y),
-                                           0, m_sdata + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 0)) ? TOTAL_SHARED : 0), 
-                                           m_blockInd + 1, m_blocks);
+                    LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride, 
+                                    (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * (m_blockInd + 1)) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                    DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * (m_blockInd + 1)) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                    DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * (m_blockInd + 1)) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
+                                    m_sdata + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 0)) ? TOTAL_SHARED : 0),
+                                    m_blockInd + 1, m_blocks);
                 }
             }
             else
@@ -338,15 +512,11 @@ namespace maps
                     __syncthreads();
                                
                     // Load the next block synchronously
-                    GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                                   BLOCK_DEPTH, BLOCK_WIDTH, SHARED_STRIDE, 
-                                   BLOCK_HEIGHT, BLOCK_DEPTH,
-                                   false, BORDERS, 
-                                   ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), 
-                        TEXTURE_UID>::Read((T *)m_ptr, m_dimensions, m_stride, 
-                                           (PRINCIPAL_DIM == 0) ? (BLOCK_WIDTH  * m_blockInd) : (BLOCK_WIDTH  * blockId.x),
-                                           (PRINCIPAL_DIM == 1) ? (BLOCK_HEIGHT * m_blockInd) : (BLOCK_HEIGHT * blockId.y),
-                                           0, m_sdata, m_blockInd, m_blocks);
+                    LoadSync::Read((T *)m_ptr, m_dimensions, m_stride, 
+                                   (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * m_blockInd) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                   DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * m_blockInd) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                   DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * m_blockInd) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
+                                   m_sdata, m_blockInd, m_blocks);
                 }
             }
         }
@@ -364,15 +534,11 @@ namespace maps
                 if (m_blockInd < (m_blocks - 1))
                 {
                     // Prefetch the other double-buffered block asynchronously
-                    GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                                   BLOCK_DEPTH, BLOCK_WIDTH, SHARED_STRIDE, 
-                                   BLOCK_HEIGHT, BLOCK_DEPTH,
-                                   true, BORDERS, 
-                                   ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), 
-                        TEXTURE_UID>::Read((T *)m_ptr, m_dimensions, m_stride,
-                                           (PRINCIPAL_DIM == 0) ? (BLOCK_WIDTH  * (m_blockInd + 1)) : (BLOCK_WIDTH  * blockId.x),
-                                           (PRINCIPAL_DIM == 1) ? (BLOCK_HEIGHT * (m_blockInd + 1)) : (BLOCK_HEIGHT * blockId.y),
-                                           0, m_sdata + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 0)) ? TOTAL_SHARED : 0), m_blockInd + 1, m_blocks);
+                   LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
+                                   (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * (m_blockInd + 1)) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                   DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * (m_blockInd + 1)) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                   DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * (m_blockInd + 1)) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
+                                   m_sdata + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 0)) ? TOTAL_SHARED : 0), m_blockInd + 1, m_blocks);
                 }
             }
             else
@@ -380,15 +546,11 @@ namespace maps
                 if (m_blockInd < m_blocks)
                 {
                     // Load the next block asynchronously
-                    GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                                   BLOCK_DEPTH, BLOCK_WIDTH, SHARED_STRIDE, 
-                                   BLOCK_HEIGHT, BLOCK_DEPTH,
-                                   true, BORDERS, 
-                                   ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), 
-                        TEXTURE_UID>::Read((T *)m_ptr, m_dimensions, m_stride, 
-                                           (PRINCIPAL_DIM == 0) ? (BLOCK_WIDTH  * m_blockInd) : (BLOCK_WIDTH  * blockId.x),
-                                           (PRINCIPAL_DIM == 1) ? (BLOCK_HEIGHT * m_blockInd) : (BLOCK_HEIGHT * blockId.y),
-                                           0, m_sdata, m_blockInd, m_blocks);
+                    LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
+                                    (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * m_blockInd) : (SHARED_WIDTH  * (MULTI_GPU ? blockId.x : blockIdx.x)),
+                                    DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * m_blockInd) : (SHARED_HEIGHT * (MULTI_GPU ? blockId.y : blockIdx.y)),
+                                    DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * m_blockInd) : (SHARED_DEPTH  * (MULTI_GPU ? blockId.z : blockIdx.z)),
+                                    m_sdata, m_blockInd, m_blocks);
                 }
             }
         }
@@ -397,6 +559,11 @@ namespace maps
          * @brief Returns false if there are more chunks to process.
          */
         __device__ __forceinline__ bool isDone() { return (m_blockInd >= m_blocks); }
+
+        /**
+         * @brief Returns the total number of chunks, or 0 for dynamic chunks.
+         */
+        __device__ __forceinline__ int chunks() { return m_blocks; }
     };
 
 }  // namespace maps

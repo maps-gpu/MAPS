@@ -245,6 +245,156 @@ TEST(Block, Block2DTransposedSimple)
     TestBlock2D<int, 3, 2, true>(12, 6);
 }
 
+// This kernel sums all rows/columns (depends on TRANSPOSED) and stores the results
+template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, bool TRANSPOSED, int ILP_X = 1, int ILP_Y = 1>
+__global__ void SimpleBlock2DILP(maps::BlockSingleGPU<T, 2, TRANSPOSED ? 1 : 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y> in,
+                                 maps::StructuredInjective2DSingleGPU<T, BLOCK_WIDTH, BLOCK_HEIGHT, ILP_X, ILP_Y> out)
+{
+    MAPS_INIT(in, out);
+    
+    #pragma unroll
+    MAPS_FOREACH(oiter, out)
+    {
+        *oiter = Initialize<T>(0);
+    }
+
+    do
+    {
+        #pragma unroll
+        MAPS_FOREACH(oiter, out)
+        {
+            #pragma unroll
+            MAPS_FOREACH_ALIGNED(iter, in, oiter)
+            {
+                *oiter += *iter;
+            }
+        }
+        
+        in.nextChunk();
+    } while (!in.isDone());
+
+    if(out.Items() > 0)
+        out.commit();
+}
+
+template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, bool TRANSPOSED, int ILP_X, int ILP_Y>
+void TestBlock2DILP(int matrix_width, int matrix_height)
+{
+    // Allocate GPU memory
+    T *d_in = nullptr, *d_out = nullptr;
+    const int out_size = (TRANSPOSED ? matrix_width : matrix_height);
+    size_t in_stride = 0, out_stride = 0;
+    CUASSERT_NOERR(cudaMallocPitch(&d_in, &in_stride, sizeof(T) * matrix_width, matrix_height));
+    CUASSERT_NOERR(cudaMallocPitch(&d_out,&out_stride,sizeof(T) * matrix_width, matrix_height));
+
+    // Initialize input
+    size_t totalsize = matrix_width * matrix_height;
+    std::vector<T> in_val(totalsize), 
+                   out_val(totalsize, Initialize<T>(0)),
+                   expected_out_val(out_size, Initialize<T>(0));
+    for (int y = 0; y < matrix_height; ++y)
+    {
+        for (int x = 0; x < matrix_width; ++x)
+        {
+            int i = y * matrix_width + x;
+            in_val[i] = Initialize<T>(i);
+
+            // Compute expected output values
+            expected_out_val[TRANSPOSED ? x : y] += in_val[i];
+        }
+    }
+    
+    // Copy input
+    CUASSERT_NOERR(cudaMemcpy2D(d_in, in_stride, &in_val[0], sizeof(T) * matrix_width,
+                                sizeof(T) * matrix_width, matrix_height, cudaMemcpyHostToDevice));
+
+    // Create structures
+    maps::BlockSingleGPU<T, 2, TRANSPOSED ? 1 : 0, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y> in;
+    maps::StructuredInjective2DSingleGPU<float, BLOCK_WIDTH, BLOCK_HEIGHT, ILP_X, ILP_Y> out;
+    
+    in.m_ptr = d_in;
+    in.m_dimensions[0] = matrix_width;
+    in.m_dimensions[1] = matrix_height;
+    in.m_stride = (int)in_stride / sizeof(T);
+
+    out.m_ptr = d_out;
+    out.m_dimensions[0] = matrix_width;
+    out.m_dimensions[1] = matrix_height;
+    out.m_stride = (int)out_stride / sizeof(T);
+    
+    dim3 block_dims(BLOCK_WIDTH, BLOCK_HEIGHT, 1);
+    dim3 grid_dims(maps::RoundUp(matrix_width,  block_dims.x * ILP_X), 
+                   maps::RoundUp(matrix_height, block_dims.y * ILP_Y), 1);
+    
+    // Run test
+    SimpleBlock2DILP<T, BLOCK_WIDTH, BLOCK_HEIGHT, TRANSPOSED, ILP_X, ILP_Y> <<<grid_dims, block_dims>>>(in, out);
+    CUASSERT_NOERR(cudaDeviceSynchronize());
+
+    // Copy output
+    CUASSERT_NOERR(cudaMemcpy2D(&out_val[0], sizeof(T) * matrix_width, d_out, out_stride, sizeof(T) * matrix_width, matrix_height,
+                                cudaMemcpyDeviceToHost));
+
+    // Check results
+    for (int y = 0; y < matrix_height; ++y)
+    {
+        for (int x = 0; x < matrix_width; ++x)
+        {
+            ASSERT_EQ(out_val[y * matrix_width + x], expected_out_val[TRANSPOSED ? x : y]) << "at index (" << x << ", " << y << ")"
+                << " Using ILP = " << ILP_X << ", " << ILP_Y;
+        }
+    }
+
+    // Free GPU memory
+    CUASSERT_NOERR(cudaFree(d_in));
+    CUASSERT_NOERR(cudaFree(d_out));
+}
+
+
+TEST(Block, Block2DILP)
+{
+    size_t width = 3840, height = 2400;
+
+    #define TEST_BLOCK_ILP(IPX, IPY) TestBlock2DILP<float, 16, 16, false, IPX, IPY>(width, height)
+
+    // Test various ILP configurations
+    TEST_BLOCK_ILP(1, 1);
+    TEST_BLOCK_ILP(2, 1);
+    TEST_BLOCK_ILP(3, 1);
+    TEST_BLOCK_ILP(4, 1);
+    TEST_BLOCK_ILP(1, 2);
+    TEST_BLOCK_ILP(1, 3);
+    TEST_BLOCK_ILP(4, 2);
+    TEST_BLOCK_ILP(5, 3);
+    TEST_BLOCK_ILP(3, 5);
+    TEST_BLOCK_ILP(8, 1);
+    TEST_BLOCK_ILP(10, 1);
+
+    #undef TEST_BLOCK_ILP
+}
+
+TEST(Block, Block2DTILP)
+{
+    size_t width = 1200, height = 2400;
+
+    #define TEST_BLOCK_ILP(IPX, IPY) TestBlock2DILP<float, 16, 16, true, IPX, IPY>(width, height)
+
+    // Test various ILP configurations
+    TEST_BLOCK_ILP(1, 1);
+    TEST_BLOCK_ILP(2, 1);
+    TEST_BLOCK_ILP(3, 1);
+    TEST_BLOCK_ILP(4, 1);
+    TEST_BLOCK_ILP(1, 2);
+    TEST_BLOCK_ILP(1, 3);
+    TEST_BLOCK_ILP(4, 2);
+    TEST_BLOCK_ILP(5, 3);
+    TEST_BLOCK_ILP(3, 5);
+    TEST_BLOCK_ILP(8, 1);
+    TEST_BLOCK_ILP(10, 1);
+
+    #undef TEST_BLOCK_ILP
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 // Complex tests
 

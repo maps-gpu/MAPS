@@ -179,6 +179,40 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\maps\input_containers\adjacency.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\block.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_common.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_globalread.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_globaltoarray.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_globaltoshared.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\irregular.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\permutation.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\traversal.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\window.cuh" />
+    <ClInclude Include="..\..\include\maps\internal\common.cuh" />
+    <ClInclude Include="..\..\include\maps\internal\common.h" />
+    <ClInclude Include="..\..\include\maps\internal\cuda_utils.hpp" />
+    <ClInclude Include="..\..\include\maps\internal\texref.cuh" />
+    <ClInclude Include="..\..\include\maps\internal\type_traits.hpp" />
+    <ClInclude Include="..\..\include\maps\maps.cuh" />
+    <ClInclude Include="..\..\include\maps\multi\aggregators.h" />
+    <ClInclude Include="..\..\include\maps\multi\allocator.h" />
+    <ClInclude Include="..\..\include\maps\multi\common.h" />
+    <ClInclude Include="..\..\include\maps\multi\datum.h" />
+    <ClInclude Include="..\..\include\maps\multi\graph.h" />
+    <ClInclude Include="..\..\include\maps\multi\graph_containers.h" />
+    <ClInclude Include="..\..\include\maps\multi\graph_datum.h" />
+    <ClInclude Include="..\..\include\maps\multi\input_containers.h" />
+    <ClInclude Include="..\..\include\maps\multi\memory_analyzer.h" />
+    <ClInclude Include="..\..\include\maps\multi\multi.cuh" />
+    <ClInclude Include="..\..\include\maps\multi\output_containers.h" />
+    <ClInclude Include="..\..\include\maps\multi\pinned_allocation.h" />
+    <ClInclude Include="..\..\include\maps\multi\scheduler.h" />
+    <ClInclude Include="..\..\include\maps\multi\task_constructor.h" />
+    <ClInclude Include="..\..\include\maps\multi\task_graph.h" />
+    <ClInclude Include="..\..\include\maps\multi\worker.h" />
+    <ClInclude Include="..\..\include\maps\output_containers\injective.cuh" />
+    <ClInclude Include="..\..\include\maps\output_containers\reductive.cuh" />
     <ClInclude Include="cuda_gtest_utils.h" />
   </ItemGroup>
   <ItemGroup>
@@ -202,6 +236,11 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <CudaCompile Include="system_test.cu" />
     <CudaCompile Include="window_perftest.cu" />
     <CudaCompile Include="window_test.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\include\maps\input_containers\block\block_iterator.inl" />
+    <None Include="..\..\include\maps\input_containers\window\window2D_ilp.inl" />
+    <None Include="..\..\include\maps\input_containers\window\window_iterator.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

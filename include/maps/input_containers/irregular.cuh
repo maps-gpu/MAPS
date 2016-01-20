@@ -65,16 +65,13 @@ namespace maps
             m_stride = stride;
         }
 
-        __device__ __forceinline__ void init()
-        {
-        }
-
-        __device__ __forceinline__ void init_async(SharedData& sdata)
-        {
-        }
-        __device__ __forceinline__ void init_async_postsync()
-        {
-        }
+        __device__ __forceinline__ void init() { }
+        __device__ __forceinline__ void init_async(SharedData& sdata) { }
+        __device__ __forceinline__ void init_async_postsync() { }
+        __device__ __forceinline__ void nextChunk() { }
+        __device__ __forceinline__ void nextChunkAsync() { }
+        __device__ __forceinline__ bool isDone() { return true; }
+        __device__ __forceinline__ int chunks() { return 1; }
     };
 
 }  // namespace maps

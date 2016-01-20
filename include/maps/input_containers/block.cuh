@@ -54,6 +54,91 @@ namespace maps
                                  BORDERS, CHUNKX, CHUNKY, CHUNKZ,
                                  TEXTURE_UID, GRS, false>;
 
+    // Type aliases
+
+    template<typename T, int BLOCK_WIDTH, int IPX = 1, int BLOCK_HEIGHT = 1, 
+             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
+             int CHUNKX = BLOCK_WIDTH, int TEXTURE_UID = -1, 
+             GlobalReadScheme GRS = GR_DISTINCT, bool MULTI_GPU = true>
+    using Block1D = Block<T, 1, 0, BLOCK_WIDTH, 
+                          BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 1, 1, 
+                          BORDERS, CHUNKX, 1, 1,
+                          TEXTURE_UID, GRS, MULTI_GPU>;
+
+
+    template<typename T, int BLOCK_WIDTH, int IPX = 1, int BLOCK_HEIGHT = 1,
+             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
+             int CHUNKX = BLOCK_WIDTH, int TEXTURE_UID = -1, 
+             GlobalReadScheme GRS = GR_DISTINCT>
+    using Block1DSingleGPU = Block<T, 1, 0, BLOCK_WIDTH, 
+                                   BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 1, 1, 
+                                   BORDERS, CHUNKX, 1, 1,
+                                   TEXTURE_UID, GRS, false>;
+
+    template<typename T, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
+             int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, 
+             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT,
+             bool MULTI_GPU = true>
+    using Block2D = Block<T, 2, PRINCIPAL_DIM, BLOCK_WIDTH, 
+                          BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                          BORDERS, CHUNKX, CHUNKY, 1,
+                          TEXTURE_UID, GRS, MULTI_GPU>;
+
+    template<typename T, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
+             int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, 
+             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+    using Block2DSingleGPU = Block<T, 2, PRINCIPAL_DIM, BLOCK_WIDTH, 
+                                   BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                                   BORDERS, CHUNKX, CHUNKY, 1,
+                                   TEXTURE_UID, GRS, false>;
+
+    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
+             int IPY = 1, int BLOCK_DEPTH = 1, 
+             BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT,
+             bool MULTI_GPU = true>
+    using Block2DX = Block<T, 2, 0, BLOCK_WIDTH, 
+                           BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                           BORDERS, CHUNKX, CHUNKY, 1,
+                           TEXTURE_UID, GRS, MULTI_GPU>;
+
+    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
+             int IPY = 1, int BLOCK_DEPTH = 1, 
+             BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+    using Block2DXSingleGPU = Block<T, 2, 0, BLOCK_WIDTH, 
+                                   BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                                   BORDERS, CHUNKX, CHUNKY, 1,
+                                   TEXTURE_UID, GRS, false>;
+
+    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
+             int IPY = 1, int BLOCK_DEPTH = 1, 
+             BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT,
+             bool MULTI_GPU = true>
+    using Block2DY = Block<T, 2, 1, BLOCK_WIDTH, 
+                           BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                           BORDERS, CHUNKX, CHUNKY, 1,
+                           TEXTURE_UID, GRS, MULTI_GPU>;
+
+    template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
+             int IPY = 1, int BLOCK_DEPTH = 1, 
+             BorderBehavior BORDERS = WB_NOCHECKS,
+             int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
+             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+    using Block2DYSingleGPU = Block<T, 2, 1, BLOCK_WIDTH, 
+                                   BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
+                                   BORDERS, CHUNKX, CHUNKY, 1,
+                                   TEXTURE_UID, GRS, false>;
+
+    /////////////////
 
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX, int IPY, int IPZ, 

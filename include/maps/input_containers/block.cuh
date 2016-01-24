@@ -282,6 +282,8 @@ namespace maps
                 blockId.y = (__realBlockIdx / grid_dims.x) % grid_dims.y;
                 blockId.z = ((__realBlockIdx / grid_dims.x) / grid_dims.y);
             }
+            else
+                blockId = blockIdx;
                       
             m_sdata = sdata.m_sdata;
             
@@ -290,11 +292,11 @@ namespace maps
             // Load data to shared memory
             LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
                             (PRINCIPAL_DIM == 0) ? 0 : (SHARED_WIDTH  *
-                                                        DimensionOrdering::get<0>(MULTI_GPU ? blockId : blockIdx)),
+                                                        DimensionOrdering::get<0>(blockId)),
                             DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? 0 : (SHARED_HEIGHT *
-                                                                       DimensionOrdering::get<1>(MULTI_GPU ? blockId : blockIdx)),
+                                                                       DimensionOrdering::get<1>(blockId)),
                             DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? 0 : (SHARED_DEPTH  *
-                                                                       DimensionOrdering::get<2>(MULTI_GPU ? blockId : blockIdx)),
+                                                                       DimensionOrdering::get<2>(blockId)),
                             m_sdata, 0, m_blocks);
         }
 
@@ -308,11 +310,11 @@ namespace maps
             {
                 LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
                                 (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * 1) :
-                                (SHARED_WIDTH  * DimensionOrdering::get<0>(MULTI_GPU ? blockId : blockIdx)),
+                                (SHARED_WIDTH  * DimensionOrdering::get<0>(blockId)),
                                 DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * 1) :
-                                (SHARED_HEIGHT * DimensionOrdering::get<1>(MULTI_GPU ? blockId : blockIdx)),
+                                (SHARED_HEIGHT * DimensionOrdering::get<1>(blockId)),
                                 DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * 1) :
-                                (SHARED_DEPTH  * DimensionOrdering::get<2>(MULTI_GPU ? blockId : blockIdx)),
+                                (SHARED_DEPTH  * DimensionOrdering::get<2>(blockId)),
                                 m_sdata + TOTAL_SHARED, 1, m_blocks);
             }
         }
@@ -328,10 +330,10 @@ namespace maps
                           "Input must agree with container dimensions");
             size_t index_array[] = { (size_t)indices... };
                 
-            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (/*DimensionOrdering::get<0>(threadIdx)*/threadIdx.x) * IPX) + 
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (DimensionOrdering::get<0>(threadIdx)) * IPX) + 
                                          ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
-            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (/*DimensionOrdering::get<1>(threadIdx)*/threadIdx.y) * IPY);
-            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (/*DimensionOrdering::get<2>(threadIdx)*/threadIdx.z) * IPZ);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (DimensionOrdering::get<1>(threadIdx)) * IPY);
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (DimensionOrdering::get<2>(threadIdx)) * IPZ);
 
             switch (DIMS)
             {
@@ -358,10 +360,10 @@ namespace maps
                           "Input must agree with container dimensions");
             size_t index_array[] = { (size_t)indices... };
 
-            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (/*DimensionOrdering::get<0>(threadIdx)*/threadIdx.x) * IPX) + 
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (DimensionOrdering::get<0>(threadIdx)) * IPX) + 
                                          ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
-            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (/*DimensionOrdering::get<1>(threadIdx)*/threadIdx.y) * IPY);
-            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (/*DimensionOrdering::get<2>(threadIdx)*/threadIdx.z) * IPZ);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (DimensionOrdering::get<1>(threadIdx)) * IPY);
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (DimensionOrdering::get<2>(threadIdx)) * IPZ);
             
             switch (DIMS)
             {
@@ -384,10 +386,10 @@ namespace maps
          */
         __device__ __forceinline__ iterator begin() const
         {
-            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (/*DimensionOrdering::get<0>(threadIdx)*/threadIdx.x) * IPX) +
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (DimensionOrdering::get<0>(threadIdx)) * IPX) +
                 ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
-            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (/*DimensionOrdering::get<1>(threadIdx)*/threadIdx.y) * IPY);
-            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (/*DimensionOrdering::get<2>(threadIdx)*/threadIdx.z) * IPZ);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (DimensionOrdering::get<1>(threadIdx)) * IPY);
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (DimensionOrdering::get<2>(threadIdx)) * IPZ);
 
 
             switch (DIMS)
@@ -411,10 +413,10 @@ namespace maps
          */
         __device__ __forceinline__ iterator end() const
         {
-            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (/*DimensionOrdering::get<0>(threadIdx)*/threadIdx.x) * IPX) +
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : (DimensionOrdering::get<0>(threadIdx)) * IPX) +
                 ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
-            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (/*DimensionOrdering::get<1>(threadIdx)*/threadIdx.y) * IPY);
-            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (/*DimensionOrdering::get<2>(threadIdx)*/threadIdx.z) * IPZ);
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : (DimensionOrdering::get<1>(threadIdx)) * IPY);
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : (DimensionOrdering::get<2>(threadIdx)) * IPZ);
 
 
             switch (DIMS)
@@ -445,10 +447,10 @@ namespace maps
                                           (oiter.m_pos / IPX) % IPY);
             const unsigned int ILPOFFZ = (DIMS < 3 ? 0 : oiter.m_pos / IPX / IPY);
 
-            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : ((/*DimensionOrdering::get<0>(threadIdx)*/threadIdx.x) * IPX + ILPOFFX)) +
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : ((DimensionOrdering::get<0>(threadIdx)) * IPX + ILPOFFX)) +
                 ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
-            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : ((/*DimensionOrdering::get<1>(threadIdx)*/threadIdx.y) * IPY + ILPOFFY));
-            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : ((/*DimensionOrdering::get<2>(threadIdx)*/threadIdx.z) * IPZ + ILPOFFZ));
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : ((DimensionOrdering::get<1>(threadIdx)) * IPY + ILPOFFY));
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : ((DimensionOrdering::get<2>(threadIdx)) * IPZ + ILPOFFZ));
 
 
             switch (DIMS)
@@ -479,10 +481,10 @@ namespace maps
                                           (oiter.m_pos / IPX) % IPY);
             const unsigned int ILPOFFZ = (DIMS < 3 ? 0 : oiter.m_pos / IPX / IPY);
 
-            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : ((/*DimensionOrdering::get<0>(threadIdx)*/threadIdx.x) * IPX + ILPOFFX)) +
+            const unsigned int OFFSETX = (PRINCIPAL_DIM == 0 ? 0 : ((DimensionOrdering::get<0>(threadIdx)) * IPX + ILPOFFX)) +
                 ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 1)) ? TOTAL_SHARED : 0);
-            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : ((/*DimensionOrdering::get<1>(threadIdx)*/threadIdx.y) * IPY + ILPOFFY));
-            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : ((/*DimensionOrdering::get<2>(threadIdx)*/threadIdx.z) * IPZ + ILPOFFZ));
+            const unsigned int OFFSETY = (PRINCIPAL_DIM == 1 ? 0 : ((DimensionOrdering::get<1>(threadIdx)) * IPY + ILPOFFY));
+            const unsigned int OFFSETZ = (PRINCIPAL_DIM == 2 ? 0 : ((DimensionOrdering::get<2>(threadIdx)) * IPZ + ILPOFFZ));
 
 
             switch (DIMS)
@@ -517,11 +519,11 @@ namespace maps
                     // Prefetch the other double-buffered block asynchronously
                     LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride, 
                                     (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * (m_blockInd + 1)) :
-                                    (SHARED_WIDTH  * DimensionOrdering::get<0>(MULTI_GPU ? blockId : blockIdx)),
+                                    (SHARED_WIDTH  * DimensionOrdering::get<0>(blockId)),
                                     DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * (m_blockInd + 1)) :
-                                    (SHARED_HEIGHT * DimensionOrdering::get<1>(MULTI_GPU ? blockId : blockIdx)),
+                                    (SHARED_HEIGHT * DimensionOrdering::get<1>(blockId)),
                                     DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * (m_blockInd + 1)) :
-                                    (SHARED_DEPTH  * DimensionOrdering::get<2>(MULTI_GPU ? blockId : blockIdx)),
+                                    (SHARED_DEPTH  * DimensionOrdering::get<2>(blockId)),
                                     m_sdata + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 0)) ? TOTAL_SHARED : 0),
                                     m_blockInd + 1, m_blocks);
                 }
@@ -535,11 +537,11 @@ namespace maps
                     // Load the next block synchronously
                     LoadSync::Read((T *)m_ptr, m_dimensions, m_stride, 
                                    (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * m_blockInd) :
-                                   (SHARED_WIDTH  * DimensionOrdering::get<0>(MULTI_GPU ? blockId : blockIdx)),
+                                   (SHARED_WIDTH  * DimensionOrdering::get<0>(blockId)),
                                    DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * m_blockInd) :
-                                   (SHARED_HEIGHT * DimensionOrdering::get<1>(MULTI_GPU ? blockId : blockIdx)),
+                                   (SHARED_HEIGHT * DimensionOrdering::get<1>(blockId)),
                                    DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * m_blockInd) :
-                                   (SHARED_DEPTH  * DimensionOrdering::get<2>(MULTI_GPU ? blockId : blockIdx)),
+                                   (SHARED_DEPTH  * DimensionOrdering::get<2>(blockId)),
                                    m_sdata, m_blockInd, m_blocks);
                 }
             }
@@ -560,11 +562,11 @@ namespace maps
                     // Prefetch the other double-buffered block asynchronously
                    LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
                                    (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * (m_blockInd + 1)) :
-                                   (SHARED_WIDTH  * DimensionOrdering::get<0>(MULTI_GPU ? blockId : blockIdx)),
+                                   (SHARED_WIDTH  * DimensionOrdering::get<0>(blockId)),
                                    DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * (m_blockInd + 1)) :
-                                   (SHARED_HEIGHT * DimensionOrdering::get<1>(MULTI_GPU ? blockId : blockIdx)),
+                                   (SHARED_HEIGHT * DimensionOrdering::get<1>(blockId)),
                                    DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * (m_blockInd + 1)) :
-                                   (SHARED_DEPTH  * DimensionOrdering::get<2>(MULTI_GPU ? blockId : blockIdx)),
+                                   (SHARED_DEPTH  * DimensionOrdering::get<2>(blockId)),
                                    m_sdata + ((USE_SMEM_DOUBLE_BUFFERING && (m_blockInd % 2 == 0)) ? TOTAL_SHARED : 0), m_blockInd + 1, m_blocks);
                 }
             }
@@ -575,11 +577,11 @@ namespace maps
                     // Load the next block asynchronously
                     LoadAsync::Read((T *)m_ptr, m_dimensions, m_stride,
                                     (PRINCIPAL_DIM == 0) ? (SHARED_WIDTH  * m_blockInd) :
-                                    (SHARED_WIDTH  * DimensionOrdering::get<0>(MULTI_GPU ? blockId : blockIdx)),
+                                    (SHARED_WIDTH  * DimensionOrdering::get<0>(blockId)),
                                     DIMS < 2 ? 0 : (PRINCIPAL_DIM == 1) ? (SHARED_HEIGHT * m_blockInd) :
-                                    (SHARED_HEIGHT * DimensionOrdering::get<1>(MULTI_GPU ? blockId : blockIdx)),
+                                    (SHARED_HEIGHT * DimensionOrdering::get<1>(blockId)),
                                     DIMS < 3 ? 0 : (PRINCIPAL_DIM == 2) ? (SHARED_DEPTH  * m_blockInd) :
-                                    (SHARED_DEPTH  * DimensionOrdering::get<2>(MULTI_GPU ? blockId : blockIdx)),
+                                    (SHARED_DEPTH  * DimensionOrdering::get<2>(blockId)),
                                     m_sdata, m_blockInd, m_blocks);
                 }
             }

@@ -229,6 +229,106 @@ namespace maps
           int xoffset, int yoffset, int zoffset, T *ptr);
     };
 
+    //////////////////////////////////////////////////////////////////////////
+    // Dimension ordering structures
+
+    struct IDimensionOrdering
+    {
+        enum
+        {
+            DIMX = 0,
+            DIMY = 1,
+            DIMZ = 2
+        };
+            
+        template<unsigned int DIM>
+        static __host__ __device__ __forceinline__ unsigned int get(const dim3& blockId);
+        
+        template<unsigned int DIM>
+        static __host__ __device__ __forceinline__ unsigned int get(const uint3& threadId);
+    };
+
+    template<int FIRST_DIM = 0, int SECOND_DIM = 1, int THIRD_DIM = 2>
+    struct CustomOrdering : public IDimensionOrdering
+    {
+        /*enum
+        {
+            DIMX = FIRST_DIM,
+            DIMY = SECOND_DIM,
+            DIMZ = THIRD_DIM
+            };*/
+
+        template<typename T, unsigned int DIM>
+        static __host__ __device__ __forceinline__ unsigned int get_internal(const T& a)
+        {
+            switch (DIM)
+            {
+              default:
+              case 0:
+                  return a.x;
+              case 1:
+                  return a.y;
+              case 2:
+                  return a.z;
+            };
+        }
+
+        /*
+        template<unsigned int DIM>
+        static __host__ __device__ __forceinline__ unsigned int get_internal(const uint3& threadId)
+        {
+            switch (DIM)
+            {
+              default:
+              case 0:
+                  return threadId.x;
+              case 1:
+                  return threadId.y;
+              case 2:
+                  return threadId.z;
+            };
+        }
+        */
+        template<unsigned int DIM, typename T>
+        static __host__ __device__ __forceinline__ unsigned int get(const T& a)
+        {
+            switch (DIM)
+            {
+              default:
+              case 0:
+                  return get_internal<T, FIRST_DIM>(a);
+              case 1:
+                  return get_internal<T, SECOND_DIM>(a);
+              case 2:
+                  return get_internal<T, THIRD_DIM>(a);
+            }
+        }
+        /*
+        template<unsigned int DIM>
+        static __host__ __device__ __forceinline__ unsigned int get(const uint3& threadId)
+        {
+            switch (DIM)
+            {
+              default:
+              case 0:
+                  return get_internal<FIRST_DIM>(threadId);
+              case 1:
+                  return get_internal<SECOND_DIM>(threadId);
+              case 2:
+                  return get_internal<THIRD_DIM>(threadId);
+            }
+        }
+        */
+    };
+
+    /// @brief Default dimension ordering (x,y,z)
+    struct DefaultOrdering : public CustomOrdering<0,1,2>
+    { };
+
+    /// @brief Transposed dimension ordering (y,x,z)
+    struct TransposedOrdering : public CustomOrdering<1,0,2>
+    { };
+
 }  // namespace maps
 
 #endif  // __MAPS_IO_COMMON_CUH_

@@ -158,8 +158,8 @@ namespace maps
         /////////////////////////////////////////////////////////
         // OUTPUT CONTAINERS
 
-        template<typename T, int DIMS, int ITEMS_PER_THREAD, int ROWS_PER_THREAD, ILPScheme ILP_SCHEME>
-        inline void ConstructArgs(Task& task, const StructuredInjectiveOutput<T, DIMS, ITEMS_PER_THREAD, ROWS_PER_THREAD, ILP_SCHEME>& arg)
+        template<typename T, int DIMS, int ITEMS_PER_THREAD, int ROWS_PER_THREAD>
+        inline void ConstructArgs(Task& task, const StructuredInjectiveOutput<T, DIMS, ITEMS_PER_THREAD, ROWS_PER_THREAD>& arg)
         {
             // Notify the scheduler to segment the kernels by this output automatically
             if (task.segmentation_output_index < 0)

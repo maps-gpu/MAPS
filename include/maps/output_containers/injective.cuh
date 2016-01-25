@@ -36,62 +36,58 @@ namespace maps
 {
     template <typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
               int BLOCK_DEPTH, int ITEMS_PER_THREAD = 1, 
-              int ROWS_PER_THREAD = 1, ILPScheme ILP_SCHEME = ILP_CONTINUOUS, 
-              typename GlobalIOScheme = DirectIO, bool MULTI_GPU = true>
+              int ROWS_PER_THREAD = 1, typename GlobalIOScheme = DirectIO, 
+              bool MULTI_GPU = true>
     struct StructuredInjectiveOutput;
 
     // Type aliases    
     template <typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
               int BLOCK_DEPTH, int ITEMS_PER_THREAD = 1, 
-              int ROWS_PER_THREAD = 1, ILPScheme ILP_SCHEME = ILP_CONTINUOUS,
-              typename GlobalIOScheme = DirectIO>
+              int ROWS_PER_THREAD = 1, typename GlobalIOScheme = DirectIO>
     using StructuredInjectiveSingleGPU = 
         StructuredInjectiveOutput<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT,
                                   BLOCK_DEPTH, ITEMS_PER_THREAD, 
-                                  ROWS_PER_THREAD, ILP_SCHEME, 
+                                  ROWS_PER_THREAD,  
                                   GlobalIOScheme, false>;
 
     template <typename T, int BLOCK_WIDTH, int ITEMS_PER_THREAD = 1, 
               int BLOCK_HEIGHT = 1, int BLOCK_DEPTH = 1,
-              ILPScheme ILP_SCHEME = ILP_CONTINUOUS, 
               typename GlobalIOScheme = DirectIO, bool MULTI_GPU = true>
     using StructuredInjective1D = 
         StructuredInjectiveOutput<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT,
-                                  BLOCK_DEPTH, ITEMS_PER_THREAD, 1, ILP_SCHEME,
+                                  BLOCK_DEPTH, ITEMS_PER_THREAD, 1,
                                   GlobalIOScheme, MULTI_GPU>;
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
               int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1, 
-              int BLOCK_DEPTH = 1, ILPScheme ILP_SCHEME = ILP_CONTINUOUS, 
-              typename GlobalIOScheme = DirectIO, bool MULTI_GPU = true>
+              int BLOCK_DEPTH = 1, typename GlobalIOScheme = DirectIO, 
+              bool MULTI_GPU = true>
     using StructuredInjective2D = 
         StructuredInjectiveOutput<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT,
                                   BLOCK_DEPTH, ITEMS_PER_THREAD, 
-                                  ROWS_PER_THREAD, ILP_SCHEME,
+                                  ROWS_PER_THREAD,
                                   GlobalIOScheme, MULTI_GPU>;
     
     template <typename T, int BLOCK_WIDTH, int ITEMS_PER_THREAD = 1, 
               int BLOCK_HEIGHT = 1, int BLOCK_DEPTH = 1,
-              ILPScheme ILP_SCHEME = ILP_CONTINUOUS,
               typename GlobalIOScheme = DirectIO>
     using StructuredInjective1DSingleGPU = 
         StructuredInjectiveOutput<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT,
-                                  BLOCK_DEPTH, ITEMS_PER_THREAD, 1, ILP_SCHEME,
+                                  BLOCK_DEPTH, ITEMS_PER_THREAD, 1,
                                   GlobalIOScheme, false>;
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
               int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1, 
-              int BLOCK_DEPTH = 1, ILPScheme ILP_SCHEME = ILP_CONTINUOUS,
-              typename GlobalIOScheme = DirectIO>
+              int BLOCK_DEPTH = 1, typename GlobalIOScheme = DirectIO>
     using StructuredInjective2DSingleGPU = 
         StructuredInjectiveOutput<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT,
                                   BLOCK_DEPTH, ITEMS_PER_THREAD, 
-                                  ROWS_PER_THREAD, ILP_SCHEME,
+                                  ROWS_PER_THREAD,
                                   GlobalIOScheme, false>;
 
     template <typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
               int BLOCK_DEPTH, int ITEMS_PER_THREAD, int ROWS_PER_THREAD, 
-              ILPScheme ILP_SCHEME, typename GlobalIOScheme, bool MULTI_GPU>
+              typename GlobalIOScheme, bool MULTI_GPU>
     struct StructuredInjectiveOutput : public IOutputContainer
     {
         MAPS_STATIC_ASSERT(DIMS > 0, "Dimensions must be positive.");
@@ -216,7 +212,7 @@ namespace maps
             typedef StructuredInjectiveOutput<T, DIMS, BLOCK_WIDTH, 
                                               BLOCK_HEIGHT, BLOCK_DEPTH, 
                                               ITEMS_PER_THREAD, ROWS_PER_THREAD,
-                                              ILP_SCHEME, GlobalIOScheme, MULTI_GPU> Parent;
+                                              GlobalIOScheme, MULTI_GPU> Parent;
 
             Parent& m_parentData;
             int m_offset;

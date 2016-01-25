@@ -43,18 +43,7 @@ namespace maps
     {
         virtual __host__ int64_t ComputeIndex(int64_t index, size_t dimsize) const = 0;
     };
-
-    /// @brief The ILP scheme to use.
-    enum ILPScheme
-    {
-        ILP_CONTINUOUS,        ///< Continuous (blocked) indices 
-                               ///  (good for small data sizes, e.g. uint8_t, 
-                               ///  which can be read as 32-bit).
-
-        ILP_SKIPBLOCK,         ///< Striped indices, skipping by block size 
-                               ///  each time (for coalescing and general use).
-    };
-
+    
     // The use of enum ensures compile-time evaluation (pre-C++11 "constexpr").
     enum
     {

@@ -47,7 +47,7 @@ namespace maps
 {
     namespace multi
     {
-        template <typename T, int DIMS, int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1, ::maps::ILPScheme ILP_SCHEME = ::maps::ILP_CONTINUOUS>
+        template <typename T, int DIMS, int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1>
         struct StructuredInjectiveOutput
         {
             MAPS_STATIC_ASSERT(DIMS >= 1 && DIMS <= 4, "A structured injective array can only exist in 1 to 4 dimensions");
@@ -230,7 +230,7 @@ namespace maps
                     {
                         CONTAINER_DIMS = (DIMS > 3) ? 3 : DIMS,
                     };
-                    typedef ::maps::StructuredInjectiveOutput<T, CONTAINER_DIMS, 1,1,1, ITEMS_PER_THREAD, ROWS_PER_THREAD, ILP_SCHEME> ContainerType;
+                    typedef ::maps::StructuredInjectiveOutput<T, CONTAINER_DIMS, 1,1,1, ITEMS_PER_THREAD, ROWS_PER_THREAD> ContainerType;
                     ContainerType *cont = new ContainerType();
                     cont->m_ptr = (T *)buff.ptr;                    
                     cont->m_stride = buff.stride_bytes / datum->GetElementSize();
@@ -250,11 +250,11 @@ namespace maps
             std::shared_ptr<IContainerFactory> CreateContainerFactory() const { return std::shared_ptr<IContainerFactory>(new ContainerFactory()); }
         };
 
-        template <typename T, int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1, ::maps::ILPScheme ILP_SCHEME = ::maps::ILP_CONTINUOUS>
-        using StructuredInjectiveVectorO = StructuredInjectiveOutput<T, 1, ITEMS_PER_THREAD, ROWS_PER_THREAD, ILP_SCHEME>;
+        template <typename T, int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1>
+        using StructuredInjectiveVectorO = StructuredInjectiveOutput<T, 1, ITEMS_PER_THREAD, ROWS_PER_THREAD>;
 
-        template <typename T, int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1, ::maps::ILPScheme ILP_SCHEME = ::maps::ILP_CONTINUOUS>
-        using StructuredInjectiveMatrixO = StructuredInjectiveOutput<T, 2, ITEMS_PER_THREAD, ROWS_PER_THREAD, ILP_SCHEME>;
+        template <typename T, int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1>
+        using StructuredInjectiveMatrixO = StructuredInjectiveOutput<T, 2, ITEMS_PER_THREAD, ROWS_PER_THREAD>;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////

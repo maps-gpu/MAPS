@@ -34,7 +34,8 @@
 #include "internal/cuda_utils.hpp"
 #include "internal/common.cuh"
 #include "input_containers/internal/io_common.cuh"
-#include "input_containers/internal/io_globalread.cuh"
+#include "input_containers/internal/io_global.cuh"
+#include "input_containers/internal/io_boundaries.cuh"
 #include "input_containers/internal/io_globaltoarray.cuh"
 #include "input_containers/internal/io_globaltoshared.cuh"
 

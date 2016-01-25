@@ -115,7 +115,7 @@ void GameOfLife_CPUTick(const unsigned char *in, size_t inStride, unsigned char 
 
 template<int BLOCK_WIDTH, int BLOCK_HEIGHT, int ITEMS_PER_THREAD, int ROWS_PER_THREAD>
 __global__ void GameOfLifeTickMMAPS MAPS_MULTIDEF(maps::Window2D<unsigned char, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                                                                 1, maps::WB_WRAP, ITEMS_PER_THREAD, ROWS_PER_THREAD> inFrame,
+                                                                 1, maps::WrapBoundaries, ITEMS_PER_THREAD, ROWS_PER_THREAD> inFrame,
                                                   maps::StructuredInjectiveOutput<unsigned char, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 
                                                                                   ITEMS_PER_THREAD, ROWS_PER_THREAD> outFrame)
 {
@@ -250,9 +250,9 @@ bool TestGoLMAPSMulti(int ngpus)
     dim3 grid_dims(maps::RoundUp((unsigned int)width, block_dims.x), maps::RoundUp((unsigned int)height, block_dims.y), 1);
 
     // Analyze the memory access patterns for allocation purposes
-    maps::multi::AnalyzeCall(sched, grid_dims, block_dims, maps::multi::Window2D<unsigned char, BW, BH, 1, maps::WB_WRAP, IPX, IPY>(A),
+    maps::multi::AnalyzeCall(sched, grid_dims, block_dims, maps::multi::Window2D<unsigned char, BW, BH, 1, maps::WrapBoundaries, IPX, IPY>(A),
                              maps::multi::StructuredInjectiveMatrixO<unsigned char, IPX, IPY>(B));
-    maps::multi::AnalyzeCall(sched, grid_dims, block_dims, maps::multi::Window2D<unsigned char, BW, BH, 1, maps::WB_WRAP, IPX, IPY>(B),
+    maps::multi::AnalyzeCall(sched, grid_dims, block_dims, maps::multi::Window2D<unsigned char, BW, BH, 1, maps::WrapBoundaries, IPX, IPY>(B),
                              maps::multi::StructuredInjectiveMatrixO<unsigned char, IPX, IPY>(A));
 
 
@@ -269,11 +269,11 @@ bool TestGoLMAPSMulti(int ngpus)
     {
         if (i % 2 == 0)
             maps::multi::Invoke(sched, GameOfLifeTickMMAPS<BW, BH, IPX, IPY>, grid_dims, block_dims,
-                                maps::multi::Window2D<unsigned char, BW, BH, 1, maps::WB_WRAP, IPX, IPY>(A), 
+                                maps::multi::Window2D<unsigned char, BW, BH, 1, maps::WrapBoundaries, IPX, IPY>(A), 
                                 maps::multi::StructuredInjectiveMatrixO<unsigned char, IPX, IPY>(B));
         else
             maps::multi::Invoke(sched, GameOfLifeTickMMAPS<BW, BH, IPX, IPY>, grid_dims, block_dims,
-                                maps::multi::Window2D<unsigned char, BW, BH, 1, maps::WB_WRAP, IPX, IPY>(B), 
+                                maps::multi::Window2D<unsigned char, BW, BH, 1, maps::WrapBoundaries, IPX, IPY>(B), 
                                 maps::multi::StructuredInjectiveMatrixO<unsigned char, IPX, IPY>(A));
     }
 

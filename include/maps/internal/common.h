@@ -37,38 +37,13 @@
 
 namespace maps
 {
-    /**
-     * @brief Determines the behavior when accessing data beyond the 
-     *        dimensions of the input data.
-     */
-    enum BorderBehavior
+
+    /// @brief Indexed global read interface. Handles out-of-bounds indices.
+    struct IBoundaryConditions
     {
-        WB_NOCHECKS,    ///< Assume input is allocated beyond the boundaries 
-                        ///  and do not perform the checks.
-        WB_ZERO,        ///< Return a constant value of T(0).
-        WB_COPY,        ///< Copy the closest value at the border.
-        WB_WRAP,        ///< Wrap the results around the input data.
+        virtual __host__ int64_t ComputeIndex(int64_t index, size_t dimsize) const = 0;
     };
     
-    /// @brief The ILP scheme to use.
-    enum ILPScheme
-    {
-        ILP_CONTINUOUS,        ///< Continuous (blocked) indices 
-                               ///  (good for small data sizes, e.g. uint8_t, 
-                               ///  which can be read as 32-bit).
-
-        ILP_SKIPBLOCK,         ///< Striped indices, skipping by block size 
-                               ///  each time (for coalescing and general use).
-    };
-
-    enum GlobalReadScheme
-    {
-        GR_DIRECT = 0,          ///< Reads the pointer directly
-        GR_DISTINCT,            ///< Reads the pointer using LDG/Noncoherent 
-                                ///  cache
-        GR_TEXTURE,             ///< Reads the pointer using textures
-    };
-
     // The use of enum ensures compile-time evaluation (pre-C++11 "constexpr").
     enum
     {

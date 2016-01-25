@@ -34,7 +34,8 @@
 #include <maps/internal/common.h>
 #include <maps/internal/type_traits.hpp>
 #include <maps/input_containers/internal/io_common.cuh>
-#include <maps/input_containers/internal/io_globalread.cuh>
+#include <maps/input_containers/internal/io_global.cuh>
+#include <maps/input_containers/internal/io_boundaries.cuh>
 #include <maps/input_containers/internal/io_globaltoshared.cuh>
 
 #include "cuda_gtest_utils.h"
@@ -84,103 +85,97 @@ static void SimpleGPUTest(Kernel kernel)
     CUASSERT_NOERR(cudaFree(d_out));
 }
 
-template <typename T, maps::GlobalReadScheme GRS>
+template <typename T, typename GlobalIOScheme>
 __global__ void ReadGlobalKernel(const T *in, T *out)
 {
-    maps::GlobalRead<T, GRS>::Read1D(in, 0, *out);
+    GlobalIOScheme::template Read1D<T>(in, 0, *out);
 }
 
 TEST(CommonUtilities, ReadGlobal8)
 {
-    SimpleGPUTest<unsigned char>(ReadGlobalKernel<unsigned char, maps::GR_DIRECT>);
+    SimpleGPUTest<unsigned char>(ReadGlobalKernel<unsigned char, maps::DirectIO>);
 }
 
 TEST(CommonUtilities, ReadGlobal16)
 {
-    SimpleGPUTest<short>(ReadGlobalKernel<short, maps::GR_DIRECT>);
+    SimpleGPUTest<short>(ReadGlobalKernel<short, maps::DirectIO>);
 }
 
 TEST(CommonUtilities, ReadGlobal32)
 {
-    SimpleGPUTest<float>(ReadGlobalKernel<float, maps::GR_DIRECT>);
+    SimpleGPUTest<float>(ReadGlobalKernel<float, maps::DirectIO>);
 }
 
 TEST(CommonUtilities, ReadGlobal64)
 {
-    SimpleGPUTest<double>(ReadGlobalKernel<double, maps::GR_DIRECT>);
+    SimpleGPUTest<double>(ReadGlobalKernel<double, maps::DirectIO>);
 }
 
 TEST(CommonUtilities, ReadGlobal128)
 {
-    SimpleGPUTest<float4>(ReadGlobalKernel<float4, maps::GR_DIRECT>);
+    SimpleGPUTest<float4>(ReadGlobalKernel<float4, maps::DirectIO>);
 }
 
 TEST(CommonUtilities, ReadGlobalDistinct8)
 {
-    SimpleGPUTest<unsigned char>(ReadGlobalKernel<unsigned char, maps::GR_DISTINCT>);
+    SimpleGPUTest<unsigned char>(ReadGlobalKernel<unsigned char, maps::DistinctIO>);
 }
 
 TEST(CommonUtilities, ReadGlobalDistinct16)
 {
-    SimpleGPUTest<short>(ReadGlobalKernel<short, maps::GR_DISTINCT>);
+    SimpleGPUTest<short>(ReadGlobalKernel<short, maps::DistinctIO>);
 }
 
 TEST(CommonUtilities, ReadGlobalDistinct32)
 {
-    SimpleGPUTest<float>(ReadGlobalKernel<float, maps::GR_DISTINCT>);
+    SimpleGPUTest<float>(ReadGlobalKernel<float, maps::DistinctIO>);
 }
 
 TEST(CommonUtilities, ReadGlobalDistinct64)
 {
-    SimpleGPUTest<double>(ReadGlobalKernel<double, maps::GR_DISTINCT>);
+    SimpleGPUTest<double>(ReadGlobalKernel<double, maps::DistinctIO>);
 }
 
 TEST(CommonUtilities, ReadGlobalDistinct128)
 {
-    SimpleGPUTest<float4>(ReadGlobalKernel<float4, maps::GR_DISTINCT>);
+    SimpleGPUTest<float4>(ReadGlobalKernel<float4, maps::DistinctIO>);
 }
 
-template <typename T>
+template <typename T, typename GlobalIOScheme>
 __global__ void WriteGlobalKernel(const T *in, T *out)
 {
-    maps::GlobalWrite<T>::Write(out, 0, *in);
+    GlobalIOScheme::template Write<T>(out, 0, *in);
 }
 
 TEST(CommonUtilities, WriteGlobal8)
 {
-    SimpleGPUTest<unsigned char>(WriteGlobalKernel<unsigned char>);
+    SimpleGPUTest<unsigned char>(WriteGlobalKernel<unsigned char, maps::DirectIO>);
 }
 
 TEST(CommonUtilities, WriteGlobal16)
 {
-    SimpleGPUTest<short>(WriteGlobalKernel<short>);
+    SimpleGPUTest<short>(WriteGlobalKernel<short, maps::DirectIO>);
 }
 
 TEST(CommonUtilities, WriteGlobal32)
 {
-    SimpleGPUTest<float>(WriteGlobalKernel<float>);
+    SimpleGPUTest<float>(WriteGlobalKernel<float, maps::DirectIO>);
 }
 
 TEST(CommonUtilities, WriteGlobal64)
 {
-    SimpleGPUTest<double>(WriteGlobalKernel<double>);
+    SimpleGPUTest<double>(WriteGlobalKernel<double, maps::DirectIO>);
 }
 
 TEST(CommonUtilities, WriteGlobal128)
 {
-    SimpleGPUTest<float4>(WriteGlobalKernel<float4>);
+    SimpleGPUTest<float4>(WriteGlobalKernel<float4, maps::DirectIO>);
 }
 
 template <typename Kernel>
 void *GetKernelFunc(Kernel kernel)
 {
     return (void *)kernel;
-}
-
-template <typename T, int TEXTURE_UID>
-__global__ void ReadGlobalTex1DKernel(T *out)
-{
-    maps::GlobalRead<T, maps::GR_TEXTURE, TEXTURE_UID>::Read1D(nullptr, 0, *out);
 }
 
 TEST(CommonUtilities, ReadGlobalTexture1D_32)
@@ -204,8 +199,8 @@ TEST(CommonUtilities, ReadGlobalTexture1D_32)
     CUASSERT_NOERR(TexId::BindTexture(d_in, sizeof(float)));
 
     // Run test
-    void *args[] = { &d_out };
-    CUASSERT_NOERR(cudaLaunchKernel(GetKernelFunc(ReadGlobalTex1DKernel<float, 1111>), dim3(1, 1, 1), dim3(1, 1, 1), args));
+    void *args[] = { &d_in, &d_out };
+    CUASSERT_NOERR(cudaLaunchKernel(GetKernelFunc(ReadGlobalKernel<float, maps::TextureIO<1111> >), dim3(1, 1, 1), dim3(1, 1, 1), args));
     CUASSERT_NOERR(cudaDeviceSynchronize());
 
     // Copy output
@@ -241,8 +236,8 @@ TEST(CommonUtilities, ReadGlobalTexture1D_128)
     CUASSERT_NOERR(TexId::BindTexture(d_in, sizeof(float4)));
 
     // Run test
-    void *args[] = { &d_out };
-    CUASSERT_NOERR(cudaLaunchKernel(GetKernelFunc(ReadGlobalTex1DKernel<float4, 1111>), dim3(1, 1, 1), dim3(1, 1, 1), args));
+    void *args[] = { &d_in, &d_out };
+    CUASSERT_NOERR(cudaLaunchKernel(GetKernelFunc(ReadGlobalKernel<float4, maps::TextureIO<1111> >), dim3(1, 1, 1), dim3(1, 1, 1), args));
     CUASSERT_NOERR(cudaDeviceSynchronize());
 
     // Copy output
@@ -257,10 +252,10 @@ TEST(CommonUtilities, ReadGlobalTexture1D_128)
     CUASSERT_NOERR(cudaFree(d_out));
 }
 
-template <typename T, int TEXTURE_UID>
+template <typename T, typename GlobalIOScheme>
 __global__ void ReadGlobalTex2DKernel(T *out)
 {
-    maps::GlobalRead<T, maps::GR_TEXTURE, TEXTURE_UID>::Read2D(nullptr, 0, 0, 0, *out);
+    GlobalIOScheme::template Read2D<T>(nullptr, 0, 0, 0, *out);
 }
 
 TEST(CommonUtilities, ReadGlobalTexture2D_32)
@@ -285,7 +280,7 @@ TEST(CommonUtilities, ReadGlobalTexture2D_32)
 
     // Run test
     void *args[] = { &d_out };
-    CUASSERT_NOERR(cudaLaunchKernel(GetKernelFunc(ReadGlobalTex2DKernel<float, 1112>), dim3(1, 1, 1), dim3(1, 1, 1), args));
+    CUASSERT_NOERR(cudaLaunchKernel(GetKernelFunc(ReadGlobalTex2DKernel<float, maps::TextureIO<1112> >), dim3(1, 1, 1), dim3(1, 1, 1), args));
     CUASSERT_NOERR(cudaDeviceSynchronize());
 
     // Copy output
@@ -322,7 +317,7 @@ TEST(CommonUtilities, ReadGlobalTexture2D_128)
 
     // Run test
     void *args[] = { &d_out };
-    CUASSERT_NOERR(cudaLaunchKernel(GetKernelFunc(ReadGlobalTex2DKernel<float4, 1112>), dim3(1, 1, 1), dim3(1, 1, 1), args));
+    CUASSERT_NOERR(cudaLaunchKernel(GetKernelFunc(ReadGlobalTex2DKernel<float4, maps::TextureIO<1112> >), dim3(1, 1, 1), dim3(1, 1, 1), args));
     CUASSERT_NOERR(cudaDeviceSynchronize());
 
     // Copy output
@@ -418,7 +413,7 @@ __global__ void GlobalToShared1DKernel(const T *in, T *out)
 
     __shared__ T smem[SHARED_SIZE];
 
-    maps::GlobalToShared1D<T, BLOCK_WIDTH, 1, 1, SHARED_SIZE, false, maps::WB_WRAP, maps::GR_DIRECT>(in, BLOCK_WIDTH, -1, smem, 0, 1);
+    maps::GlobalToShared1D<T, BLOCK_WIDTH, 1, 1, SHARED_SIZE, false, maps::WrapBoundaries, maps::DirectIO>(in, BLOCK_WIDTH, -1, smem, 0, 1);
 
     T result = Initialize<T>(0);
     for (int i = 0; i < SHARED_SIZE; ++i)
@@ -453,7 +448,7 @@ __global__ void GlobalToShared2DSimpleKernel(const T *in, T *out)
     __shared__ T smem[SHARED_SIZE];
 
     maps::GlobalToShared2D<T, BLOCK_WIDTH, BLOCK_HEIGHT, 1, BLOCK_WIDTH, BLOCK_WIDTH,
-        BLOCK_HEIGHT, false, maps::WB_NOCHECKS, maps::GR_DIRECT>(
+        BLOCK_HEIGHT, false, maps::NoBoundaries, maps::DirectIO>(
         in, BLOCK_WIDTH, BLOCK_WIDTH, 0, BLOCK_HEIGHT, 0, smem, 0, 1);
 
     T result = Initialize<T>(0);
@@ -492,7 +487,7 @@ __global__ void GlobalToShared2DKernel(const T *in, T *out)
     __shared__ T smem[SHARED_SIZE];
 
     maps::GlobalToShared2D<T, BLOCK_WIDTH, BLOCK_HEIGHT, 1, BLOCK_WIDTH + 2, BLOCK_WIDTH + 2,
-        BLOCK_HEIGHT + 2, false, maps::WB_WRAP, maps::GR_DIRECT>(
+        BLOCK_HEIGHT + 2, false, maps::WrapBoundaries, maps::DirectIO>(
         in, BLOCK_WIDTH, BLOCK_WIDTH, -1, BLOCK_HEIGHT, -1, smem, 0, 1);
 
     T result = Initialize<T>(0);

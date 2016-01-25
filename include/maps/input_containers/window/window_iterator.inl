@@ -37,16 +37,16 @@ namespace maps {
     /// @brief Internal Window ND iterator class
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
              int WINDOW_APRON, int IPX, int IPY, int IPZ, 
-             BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
+             typename BorderBehavior, typename GlobalIOScheme, 
              bool USE_REGISTERS, int XSTRIDE, bool MULTI_GPU>
     class WindowIterator<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
-                         WINDOW_APRON, IPX, IPY, IPZ, BORDERS, TEXTURE_UID, GRS,
-                         USE_REGISTERS, XSTRIDE, MULTI_GPU> 
+                         WINDOW_APRON, IPX, IPY, IPZ, BorderBehavior, 
+                         GlobalIOScheme, USE_REGISTERS, XSTRIDE, MULTI_GPU> 
         : public std::iterator<std::input_iterator_tag, T>
     {
         typedef Window<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT,
                        BLOCK_DEPTH, WINDOW_APRON, IPX, IPY,
-                       IPZ, BORDERS, TEXTURE_UID, GRS,
+                       IPZ, BorderBehavior, GlobalIOScheme,
                        MULTI_GPU> Parent;
     protected:
 
@@ -113,16 +113,16 @@ namespace maps {
     /// @brief Internal Window ND iterator class
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
              int WINDOW_APRON, int IPX, int IPY, int IPZ, 
-             BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
+             typename BorderBehavior, typename GlobalIOScheme, 
              bool USE_REGISTERS, int XSTRIDE, bool MULTI_GPU>
     class WindowIterator<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
-                         WINDOW_APRON, IPX, IPY, IPZ, BORDERS, TEXTURE_UID, GRS,
-                         USE_REGISTERS, XSTRIDE, MULTI_GPU>
+                         WINDOW_APRON, IPX, IPY, IPZ, BorderBehavior, 
+                         GlobalIOScheme, USE_REGISTERS, XSTRIDE, MULTI_GPU>
         : public std::iterator<std::input_iterator_tag, T>
     {
         typedef Window<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT,
                        BLOCK_DEPTH, WINDOW_APRON, IPX, IPY,
-                       IPZ, BORDERS, TEXTURE_UID, GRS,
+                       IPZ, BorderBehavior, GlobalIOScheme,
                        MULTI_GPU> Parent;
     protected:
         unsigned int m_pos;

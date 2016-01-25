@@ -32,66 +32,66 @@
 
 #include "../internal/common.h"
 #include "internal/io_common.cuh"
+#include "internal/io_boundaries.cuh"
+#include "internal/io_global.cuh"
 
 namespace maps
 {
     template<typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
              int BLOCK_DEPTH, int WINDOW_APRON, int IPX = 1, int IPY = 1, 
-             int IPZ = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT, 
+             int IPZ = 1, typename BorderBehavior = NoBoundaries, 
+             typename GlobalIOScheme = DistinctIO, 
              bool MULTI_GPU = true>
     class Window;
 
     template<typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
              int BLOCK_DEPTH, int WINDOW_APRON, int IPX, int IPY, int IPZ, 
-             BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
+             typename BorderBehavior, typename GlobalIOScheme, 
              bool USE_REGISTERS, int XSTRIDE, bool MULTI_GPU>
     class WindowIterator;
 
     // Template aliases for ease of use
     template<typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
              int BLOCK_DEPTH, int WINDOW_APRON, int IPX = 1, int IPY = 1, 
-             int IPZ = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+             int IPZ = 1, typename BorderBehavior = NoBoundaries, 
+             typename GlobalIOScheme = DistinctIO>
     using WindowSingleGPU = Window<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, 
                                    BLOCK_DEPTH, WINDOW_APRON, IPX, IPY, IPZ, 
-                                   BORDERS, TEXTURE_UID, GRS, false>;
+                                   BorderBehavior, GlobalIOScheme, false>;
 
     template<typename T, int BLOCK_WIDTH, int WINDOW_APRON, int IPX = 1, 
-             BorderBehavior BORDERS = WB_NOCHECKS, int BLOCK_HEIGHT = 1, 
-             int BLOCK_DEPTH = 1, int TEXTURE_UID = -1, 
-             GlobalReadScheme GRS = GR_DISTINCT, bool MULTI_GPU = true>
+             typename BorderBehavior = NoBoundaries, int BLOCK_HEIGHT = 1, 
+             int BLOCK_DEPTH = 1, typename GlobalIOScheme = DistinctIO, 
+             bool MULTI_GPU = true>
     using Window1D = Window<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
-                            WINDOW_APRON, IPX, 1, 1, BORDERS, TEXTURE_UID, GRS,
-                            MULTI_GPU>;
+                            WINDOW_APRON, IPX, 1, 1, BorderBehavior, 
+                            GlobalIOScheme, MULTI_GPU>;
     template<typename T, int BLOCK_WIDTH, int WINDOW_APRON, int IPX = 1, 
-             BorderBehavior BORDERS = WB_NOCHECKS, int BLOCK_HEIGHT = 1, 
-             int BLOCK_DEPTH = 1, int TEXTURE_UID = -1, 
-             GlobalReadScheme GRS = GR_DISTINCT>
+             typename BorderBehavior = NoBoundaries, int BLOCK_HEIGHT = 1, 
+             int BLOCK_DEPTH = 1, typename GlobalIOScheme = DistinctIO>
     using Window1DSingleGPU = Window<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, 
                                      BLOCK_DEPTH, WINDOW_APRON, IPX, 1, 1, 
-                                     BORDERS, TEXTURE_UID, GRS, false>;
+                                     BorderBehavior, GlobalIOScheme, false>;
 
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int WINDOW_APRON, 
-             BorderBehavior BORDERS = WB_NOCHECKS, int IPX = 1, int IPY = 1, 
-             int BLOCK_DEPTH = 1, int TEXTURE_UID = -1, 
-             GlobalReadScheme GRS = GR_DISTINCT, bool MULTI_GPU = true>
+             typename BorderBehavior = NoBoundaries, int IPX = 1, int IPY = 1, 
+             int BLOCK_DEPTH = 1, typename GlobalIOScheme = DistinctIO, bool MULTI_GPU = true>
     using Window2D = Window<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
-                            WINDOW_APRON, IPX, IPY, 1, BORDERS, TEXTURE_UID, 
-                            GRS, MULTI_GPU>;
+                            WINDOW_APRON, IPX, IPY, 1, BorderBehavior, 
+                            GlobalIOScheme, MULTI_GPU>;
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int WINDOW_APRON,
-             BorderBehavior BORDERS = WB_NOCHECKS, int IPX = 1, int IPY = 1, 
-             int BLOCK_DEPTH = 1, int TEXTURE_UID = -1, 
-             GlobalReadScheme GRS = GR_DISTINCT>
+             typename BorderBehavior = NoBoundaries, int IPX = 1, int IPY = 1, 
+             int BLOCK_DEPTH = 1, 
+             typename GlobalIOScheme = DistinctIO>
     using Window2DSingleGPU = Window<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 
                                      BLOCK_DEPTH, WINDOW_APRON, IPX, IPY, 1, 
-                                     BORDERS, TEXTURE_UID, GRS, false>;
+                                     BorderBehavior, GlobalIOScheme, false>;
     ///////////////////////////////////
 
 
     template<typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
              int BLOCK_DEPTH, int WINDOW_APRON, int IPX, int IPY, int IPZ, 
-             BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS,
+             typename BorderBehavior, typename GlobalIOScheme,
              bool MULTI_GPU>
     class Window : public IInputContainer
     {
@@ -147,9 +147,8 @@ namespace maps
             // Load data to shared memory
             GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
                            SHARED_WIDTH, SHARED_WIDTH, SHARED_HEIGHT, 
-                           SHARED_DEPTH, true, BORDERS, 
-                           ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), 
-                TEXTURE_UID>::Read((T *)m_ptr, m_dimensions, m_stride, 
+                           SHARED_DEPTH, true, BorderBehavior, GlobalIOScheme>::Read(
+                                   (T *)m_ptr, m_dimensions, m_stride,
                                    offset.x, offset.y, offset.z,
                                    m_sdata, 0, 1);
         }
@@ -161,8 +160,8 @@ namespace maps
                           USE_REGISTERS ? (WINDOW_APRON * 2 + IPX) : 1,
                           USE_REGISTERS ? (WINDOW_APRON * 2 + IPY) : 1, 
                           USE_REGISTERS ? (WINDOW_APRON * 2 + IPZ) : 1,
-                          BORDERS, ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), 
-                TEXTURE_UID>::Read((T *)m_ptr, m_dimensions, m_stride, 
+                          BorderBehavior, GlobalIOScheme>::Read(
+                                   (T *)m_ptr, m_dimensions, m_stride,
                                    offset.x + IPX * threadIdx.x, 
                                    offset.y + IPY * threadIdx.y, offset.z,
                                    m_regs, 0, 1);
@@ -244,8 +243,8 @@ namespace maps
 
         // Define iterator classes
         typedef WindowIterator<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH,
-                               WINDOW_APRON, IPX, IPY, IPZ, BORDERS, 
-                               TEXTURE_UID, GRS, USE_REGISTERS, XSTRIDE, MULTI_GPU> iterator;
+                               WINDOW_APRON, IPX, IPY, IPZ, BorderBehavior, 
+                               GlobalIOScheme, USE_REGISTERS, XSTRIDE, MULTI_GPU> iterator;
         typedef iterator const_iterator;
   
         __host__ __device__ Window() : block_offset(0), m_gridWidth(0), 

@@ -62,8 +62,8 @@ namespace maps
 
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-              int XSHARED, bool ASYNC, BorderBehavior BORDERS, 
-              GlobalReadScheme GRS = GR_DISTINCT, int TEXTURE_UID = -1>
+              int XSHARED, bool ASYNC, typename BoundaryConditions, 
+              typename GlobalIOScheme>
     static __device__ __forceinline__ bool GlobalToShared1D(
         const T *ptr, int width, int offset, T *smem, int chunkID, 
         int num_chunks)
@@ -106,8 +106,7 @@ namespace maps
         for (int i = 0; i < TOTAL_READS; ++i)
         {
             // Read from global memory
-            result &= IndexedRead<GReadType, BORDERS, BLOCK_WIDTH, BLOCK_HEIGHT,
-                                  BLOCK_DEPTH, GRS, TEXTURE_UID>::Read1D(
+            result &= BoundaryConditions::template Read1D<GReadType, GlobalIOScheme>(
                 p,
                 offset + BLOCK_SIZE * i + tid, width,
                 tmp);
@@ -129,8 +128,7 @@ namespace maps
             };
 
             // Read from global memory
-            result &= IndexedRead<GReadType, BORDERS, BLOCK_WIDTH, BLOCK_HEIGHT,
-                                  BLOCK_DEPTH, GRS, TEXTURE_UID>::Read1D(
+            result &= BoundaryConditions::template Read1D<GReadType, GlobalIOScheme>(
                 p, 
                 offset + REMAINDER_START_INDEX + tid, width,
                 tmp);
@@ -150,8 +148,7 @@ namespace maps
             if (tid < XSHARED)
             {
                 // Read T-sized elements, write directly to shared
-                result &= IndexedRead<T, BORDERS, BLOCK_WIDTH, BLOCK_HEIGHT, 
-                                      BLOCK_DEPTH, GRS, TEXTURE_UID>::Read1D(
+                result &= BoundaryConditions::template Read1D<T, GlobalIOScheme>(
                     ptr,
                     offset + tid, width,
                     tmp);
@@ -168,8 +165,7 @@ namespace maps
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
               int XSHARED, int XSTRIDE, int YSHARED, bool ASYNC, 
-              BorderBehavior BORDERS, GlobalReadScheme GRS = GR_DISTINCT, 
-              int TEXTURE_UID = -1>
+              typename BoundaryConditions, typename GlobalIOScheme>
     static __device__ __forceinline__ bool GlobalToShared2D(
         const T *ptr, int width, int stride, int xoffset, int height, 
         int yoffset, T *smem, int chunkID, int num_chunks)
@@ -221,9 +217,7 @@ namespace maps
             for (int j = 0; j < TOTAL_READS_X; ++j)
             {
                 // Read from global memory
-                result &= IndexedRead<GReadType, BORDERS, BLOCK_WIDTH, 
-                                      BLOCK_HEIGHT, BLOCK_DEPTH, GRS, 
-                                      TEXTURE_UID>::Read2D(
+                result &= BoundaryConditions::template Read2D<GReadType, GlobalIOScheme>(
                     p,
                     xoffset + BLOCK_WIDTH * j + tidx, width,
                     stride,
@@ -243,9 +237,7 @@ namespace maps
             if (REMAINDER_READS_X != 0 && tidx < REMAINDER_READS_X)
             {
                 // Read from global memory
-                result &= IndexedRead<GReadType, BORDERS, BLOCK_WIDTH, 
-                                      BLOCK_HEIGHT, BLOCK_DEPTH, GRS, 
-                                      TEXTURE_UID>::Read2D(
+                result &= BoundaryConditions::template Read2D<GReadType, GlobalIOScheme>(
                     p,
                     xoffset + XREMAINDER_START_INDEX + tidx, width,
                     stride,
@@ -271,9 +263,7 @@ namespace maps
             for (int j = 0; j < TOTAL_READS_X; ++j)
             {
                 // Read from global memory
-                result &= IndexedRead<GReadType, BORDERS, BLOCK_WIDTH, 
-                                      BLOCK_HEIGHT, BLOCK_DEPTH, GRS, 
-                                      TEXTURE_UID>::Read2D(
+                result &= BoundaryConditions::template Read2D<GReadType, GlobalIOScheme>(
                     p,
                     xoffset + BLOCK_WIDTH * j + tidx, width,
                     stride,
@@ -294,9 +284,7 @@ namespace maps
             if (REMAINDER_READS_X != 0 && tidx < REMAINDER_READS_X)
             {
                 // Read from global memory
-                result &= IndexedRead<GReadType, BORDERS, BLOCK_WIDTH, 
-                                      BLOCK_HEIGHT, BLOCK_DEPTH, GRS, 
-                                      TEXTURE_UID>::Read2D(
+                result &= BoundaryConditions::template Read2D<GReadType, GlobalIOScheme>(
                     p,
                     xoffset + XREMAINDER_START_INDEX + tidx, width,
                     stride,
@@ -322,8 +310,8 @@ namespace maps
 
     template <typename T, int PRINCIPAL_DIM, int BLOCK_WIDTH, int BLOCK_HEIGHT,
               int BLOCK_DEPTH, int XSHARED, int XSTRIDE, int YSHARED, 
-              int ZSHARED, bool ASYNC, BorderBehavior BORDERS, 
-              GlobalReadScheme GRS = GR_DISTINCT, int TEXTURE_UID = -1>
+              int ZSHARED, bool ASYNC, typename BoundaryConditions,
+              typename GlobalIOScheme>
     static __device__ __forceinline__ bool GlobalToShared3D(
         const T *ptr, int width, int stride, int xoffset,
         int height, int yoffset, int depth, int zoffset,
@@ -339,35 +327,36 @@ namespace maps
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
               int XSHARED, int XSTRIDE, int YSHARED, int ZSHARED, bool ASYNC, 
-              BorderBehavior BORDERS, GlobalReadScheme GRS, int TEXTURE_UID>
+              typename BoundaryConditions, typename GlobalIOScheme>
     struct GlobalToShared<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, XSHARED,
-                          XSTRIDE, YSHARED, ZSHARED, ASYNC, BORDERS, GRS, 
-                          TEXTURE_UID>
+                          XSTRIDE, YSHARED, ZSHARED, ASYNC, BoundaryConditions, 
+                          GlobalIOScheme>
     {
         static __device__ __forceinline__ bool Read(
             const T *ptr, int dimensions[1], int stride, int xoffset,
             int yoffset, int zoffset, T *smem, int chunkID, int num_chunks)
         {
             return GlobalToShared1D<T, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
-                                    XSHARED, ASYNC, BORDERS, GRS, TEXTURE_UID>(
+                                    XSHARED, ASYNC, BoundaryConditions, 
+                                    GlobalIOScheme>(
               ptr, dimensions[0], xoffset, smem, chunkID, num_chunks);
         }
     };
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
               int XSHARED, int XSTRIDE, int YSHARED, int ZSHARED, bool ASYNC, 
-              BorderBehavior BORDERS, GlobalReadScheme GRS, int TEXTURE_UID>
+              typename BoundaryConditions, typename GlobalIOScheme>
     struct GlobalToShared<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, XSHARED,
-                          XSTRIDE, YSHARED, ZSHARED, ASYNC, BORDERS, GRS, 
-                          TEXTURE_UID>
+                          XSTRIDE, YSHARED, ZSHARED, ASYNC, BoundaryConditions, 
+                          GlobalIOScheme>
     {
         static __device__ __forceinline__ bool Read(
             const T *ptr, int dimensions[2], int stride, int xoffset,
             int yoffset, int zoffset, T *smem, int chunkID, int num_chunks)
         {
             return GlobalToShared2D<T, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH,
-                                    XSHARED, XSTRIDE, YSHARED, ASYNC, BORDERS, 
-                                    GRS, TEXTURE_UID>(
+                                    XSHARED, XSTRIDE, YSHARED, ASYNC, 
+                                    BoundaryConditions, GlobalIOScheme>(
                 ptr, dimensions[0], stride, xoffset, dimensions[1], yoffset, 
                 smem, chunkID, num_chunks);
         }
@@ -375,10 +364,10 @@ namespace maps
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
               int XSHARED, int XSTRIDE, int YSHARED, int ZSHARED, bool ASYNC, 
-              BorderBehavior BORDERS, GlobalReadScheme GRS, int TEXTURE_UID>
+              typename BoundaryConditions, typename GlobalIOScheme>
     struct GlobalToShared<T, 3, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, XSHARED,
-                          XSTRIDE, YSHARED, ZSHARED, ASYNC, BORDERS, GRS, 
-                          TEXTURE_UID>
+                          XSTRIDE, YSHARED, ZSHARED, ASYNC, BoundaryConditions, 
+                          GlobalIOScheme>
     {
         static __device__ __forceinline__ bool Read(
             const T *ptr, int dimensions[3], int stride, int xoffset,
@@ -386,7 +375,8 @@ namespace maps
         {
             return GlobalToShared3D<T, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
                                     XSHARED, XSTRIDE, YSHARED, ZSHARED,
-                                    ASYNC, BORDERS, GRS, TEXTURE_UID>(
+                                    ASYNC, BoundaryConditions,
+                                    GlobalIOScheme>(
                 ptr, dimensions[0], stride, xoffset, dimensions[1], yoffset, 
                 dimensions[2], zoffset, smem, chunkID, num_chunks);
         }

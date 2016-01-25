@@ -181,8 +181,9 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <ClInclude Include="..\..\include\maps\input_containers\adjacency.cuh" />
     <ClInclude Include="..\..\include\maps\input_containers\block.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_boundaries.cuh" />
     <ClInclude Include="..\..\include\maps\input_containers\internal\io_common.cuh" />
-    <ClInclude Include="..\..\include\maps\input_containers\internal\io_globalread.cuh" />
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_global.cuh" />
     <ClInclude Include="..\..\include\maps\input_containers\internal\io_globaltoarray.cuh" />
     <ClInclude Include="..\..\include\maps\input_containers\internal\io_globaltoshared.cuh" />
     <ClInclude Include="..\..\include\maps\input_containers\irregular.cuh" />

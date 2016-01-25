@@ -248,7 +248,8 @@ namespace maps
             template<typename TContainer>
             static inline void AppendInputArgToTask(Task& task, const TContainer& arg)
             {
-                task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+                task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                                std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
                 task.argument_ordering.push_back(AT_INPUT);
             }
 

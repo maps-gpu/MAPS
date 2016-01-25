@@ -37,6 +37,13 @@
 
 namespace maps
 {
+
+    /// @brief Indexed global read interface. Handles out-of-bounds indices.
+    struct IBoundaryConditions
+    {
+        virtual __host__ int64_t ComputeIndex(int64_t index, size_t dimsize) const = 0;
+    };
+
     /// @brief The ILP scheme to use.
     enum ILPScheme
     {

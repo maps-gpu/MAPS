@@ -57,7 +57,7 @@ namespace maps
             for (int i = 0; i < DIMX; ++i)
             {
                 
-                result &= BoundaryConditions::Read1D<T, GlobalIOScheme>(
+                result &= BoundaryConditions::template Read1D<T, GlobalIOScheme>(
                     ptr, xoffset + i, dimensions[0], regs[i]);
             }
 
@@ -86,7 +86,7 @@ namespace maps
                 #pragma unroll
                 for (int x = 0; x < DIMX; ++x)
                 {
-                    result &= BoundaryConditions::Read2D<T, GlobalIOScheme>(
+                    result &= BoundaryConditions::template Read2D<T, GlobalIOScheme>(
                       ptr, xoffset + x, dimensions[0], stride, yoffset + y, 
                       dimensions[1], regs[y * DIMX + x]);
                 }
@@ -120,7 +120,7 @@ namespace maps
                     #pragma unroll
                     for (int x = 0; x < DIMX; ++x)
                     {
-                        result &= BoundaryConditions::Read3D<T, GlobalIOScheme>(
+                        result &= BoundaryConditions::template Read3D<T, GlobalIOScheme>(
                             ptr,
                             xoffset + x, dimensions[0], stride, yoffset + y,
                             dimensions[1], zoffset + z, dimensions[2],
@@ -149,7 +149,7 @@ namespace maps
             #pragma unroll
             for (int i = 0; i < DIMX; ++i)
             {
-                GlobalIOScheme::Write<T>(ptr, xoffset + threadIdx.x * DIMX + i, 
+                GlobalIOScheme::template Write<T>(ptr, xoffset + threadIdx.x * DIMX + i, 
                                          regs[i]);
             }
 
@@ -173,7 +173,7 @@ namespace maps
                 #pragma unroll
                 for (int x = 0; x < DIMX; ++x)
                 {
-                    GlobalIOScheme::Write<T>(ptr,
+                    GlobalIOScheme::template Write<T>(ptr,
                       xoffset + threadIdx.x * DIMX + x + 
                       (yoffset + threadIdx.y * DIMY + y) * stride, 
                       regs[y * DIMX + x]);
@@ -203,7 +203,7 @@ namespace maps
                     #pragma unroll
                     for (int x = 0; x < DIMX; ++x)
                     {
-                        GlobalIOScheme::Write<T>(
+                        GlobalIOScheme::template Write<T>(
                           ptr, 
                           xoffset + threadIdx.x * DIMX + x + 
                           (yoffset + threadIdx.y * DIMY + y) * stride + 

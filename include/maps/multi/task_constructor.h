@@ -104,7 +104,8 @@ namespace maps
         template<typename T, int WINDOW_APRON_X, int WINDOW_APRON_Y, int STRIDE_X, int STRIDE_Y>
         inline void ConstructArgs(Task& task, const Window3DLayeredUnmodified<T, WINDOW_APRON_X, WINDOW_APRON_Y, STRIDE_X, STRIDE_Y>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
@@ -120,21 +121,24 @@ namespace maps
         template<typename T>
         inline void ConstructArgs(Task& task, const Block1DUnmodified<T>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
         template<bool TRANSPOSED, typename T>
         inline void ConstructArgs(Task& task, const Block2DUnmodified<TRANSPOSED, T>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
         template<bool TRANSPOSED, typename T>
         inline void ConstructArgs(Task& task, const Block2D4DUnmodified<TRANSPOSED, T>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
             task.argument_ordering.push_back(AT_INPUT);
         }
 

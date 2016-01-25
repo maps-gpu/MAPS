@@ -64,27 +64,6 @@ namespace maps
         static __device__ __forceinline__ void Write(T *ptr, int offset,
                                                      const T& value);
     };
-
-    // Indexed global read
-    struct IBoundaryConditions
-    {
-        virtual __host__ int64_t ComputeIndex(int64_t index, size_t dimsize) const = 0;
-
-        template <typename T, typename GlobalIOScheme>
-        static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
-                                                      int width, T& value);
-        template <typename T, typename GlobalIOScheme>
-        static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
-                                                      int width, int stride, 
-                                                      int offy, int height, 
-                                                      T& value);
-        template <typename T, typename GlobalIOScheme>
-        static __device__ __forceinline__ bool Read3D(const T *ptr, int offx,
-                                                      int width, int stride, 
-                                                      int offy, int height, 
-                                                      int offz, int depth, 
-                                                      T& value);
-    };
   
 
     ////////////////////////////////////////////////////////////////////////

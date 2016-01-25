@@ -106,7 +106,7 @@ namespace maps
         for (int i = 0; i < TOTAL_READS; ++i)
         {
             // Read from global memory
-            result &= BoundaryConditions::Read1D<GReadType, GlobalIOScheme>(
+            result &= BoundaryConditions::template Read1D<GReadType, GlobalIOScheme>(
                 p,
                 offset + BLOCK_SIZE * i + tid, width,
                 tmp);
@@ -128,7 +128,7 @@ namespace maps
             };
 
             // Read from global memory
-            result &= BoundaryConditions::Read1D<GReadType, GlobalIOScheme>(
+            result &= BoundaryConditions::template Read1D<GReadType, GlobalIOScheme>(
                 p, 
                 offset + REMAINDER_START_INDEX + tid, width,
                 tmp);
@@ -148,7 +148,7 @@ namespace maps
             if (tid < XSHARED)
             {
                 // Read T-sized elements, write directly to shared
-                result &= BoundaryConditions::Read1D<T, GlobalIOScheme>(
+                result &= BoundaryConditions::template Read1D<T, GlobalIOScheme>(
                     ptr,
                     offset + tid, width,
                     tmp);
@@ -217,7 +217,7 @@ namespace maps
             for (int j = 0; j < TOTAL_READS_X; ++j)
             {
                 // Read from global memory
-                result &= BoundaryConditions::Read2D<GReadType, GlobalIOScheme>(
+                result &= BoundaryConditions::template Read2D<GReadType, GlobalIOScheme>(
                     p,
                     xoffset + BLOCK_WIDTH * j + tidx, width,
                     stride,
@@ -237,7 +237,7 @@ namespace maps
             if (REMAINDER_READS_X != 0 && tidx < REMAINDER_READS_X)
             {
                 // Read from global memory
-                result &= BoundaryConditions::Read2D<GReadType, GlobalIOScheme>(
+                result &= BoundaryConditions::template Read2D<GReadType, GlobalIOScheme>(
                     p,
                     xoffset + XREMAINDER_START_INDEX + tidx, width,
                     stride,
@@ -263,7 +263,7 @@ namespace maps
             for (int j = 0; j < TOTAL_READS_X; ++j)
             {
                 // Read from global memory
-                result &= BoundaryConditions::Read2D<GReadType, GlobalIOScheme>(
+                result &= BoundaryConditions::template Read2D<GReadType, GlobalIOScheme>(
                     p,
                     xoffset + BLOCK_WIDTH * j + tidx, width,
                     stride,
@@ -284,7 +284,7 @@ namespace maps
             if (REMAINDER_READS_X != 0 && tidx < REMAINDER_READS_X)
             {
                 // Read from global memory
-                result &= BoundaryConditions::Read2D<GReadType, GlobalIOScheme>(
+                result &= BoundaryConditions::template Read2D<GReadType, GlobalIOScheme>(
                     p,
                     xoffset + XREMAINDER_START_INDEX + tidx, width,
                     stride,

@@ -145,11 +145,11 @@ namespace maps
               {
 
                   int gmemIndex;
-                  GlobalIOScheme::Read1D<int>(
+                  GlobalIOScheme::template Read1D<int>(
                       (int *)m_blockEdgesIndexList.GetTypedPtr(),  
                       -m_blockEdgesIndexList.GetOffset() + 
                       numOfItemsForBlock.y + loadIndex, gmemIndex);
-                  GlobalIOScheme::Read1D<TValue>(
+                  GlobalIOScheme::template Read1D<TValue>(
                       m_nodesValueList, gmemIndex, m_sdata[loadIndex]);
 
                   loadIndex += blockDim.x;
@@ -202,7 +202,7 @@ namespace maps
 
                 // Load shared memory index from the preprocessed global memory
                 int smemIndex;
-                GlobalIOScheme::Read1D<int>(m_nodeNodesSMemIndexList, m_gmemIndex, smemIndex);
+                GlobalIOScheme::template Read1D<int>(m_nodeNodesSMemIndexList, m_gmemIndex, smemIndex);
 
                 // Load the adjacent node value from smem
                 edgeData.adjacent_node_value = m_sdata[smemIndex];

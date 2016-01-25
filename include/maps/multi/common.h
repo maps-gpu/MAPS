@@ -179,8 +179,7 @@ namespace maps
             ContainerSegmentation segmentation;
 
             TaskInput(IDatum *dat, std::shared_ptr<ISegmenter> seg, std::shared_ptr<IContainerFactory> cf,
-                      std::shared_ptr<::maps::IBoundaryConditions> bc = 
-                        std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)) : datum(dat), segmenter(seg),
+                      std::shared_ptr<::maps::IBoundaryConditions> bc) : datum(dat), segmenter(seg),
                 container_factory(cf), boundary_conditions(bc), segmentation() {}
         };
 

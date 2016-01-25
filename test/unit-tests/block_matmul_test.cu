@@ -37,7 +37,8 @@
 #include <cublas_v2.h>
 
 #include <maps/input_containers/internal/io_common.cuh>
-#include <maps/input_containers/internal/io_globalread.cuh>
+#include <maps/input_containers/internal/io_global.cuh>
+#include <maps/input_containers/internal/io_boundaries.cuh>
 #include <maps/input_containers/internal/io_globaltoshared.cuh>
 #include <maps/input_containers/internal/io_globaltoarray.cuh>
 #include <maps/input_containers/block.cuh>
@@ -50,8 +51,8 @@
 // Sizes for GEMM
 static const unsigned int kSizes[] = {
     32,
-    //    128,
-    //    192,
+    128,
+    192,
 };
 
 static const unsigned int kRandomSeed = 9699;
@@ -69,14 +70,14 @@ template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, bool A_TRANSPOSED,
 __global__ void GEMMKernel(maps::BlockSingleGPU<T, 2, A_TRANSPOSED ? 1 : 0,
                                                 BLOCK_WIDTH,
                                                 BLOCK_HEIGHT, 1, 1, 1, 1,
-                                                maps::WB_ZERO, BLOCK_WIDTH,
-                                                BLOCK_HEIGHT, 1, -1,
+                                                maps::ZeroBoundaries, BLOCK_WIDTH,
+                                                BLOCK_HEIGHT, 1, 
                                                 maps::CustomOrdering<(A_TRANSPOSED ? 1 : 0), (A_TRANSPOSED ? 0 : 1)> > A,
                            maps::BlockSingleGPU<T, 2, B_TRANSPOSED ? 0 : 1,
                                                 BLOCK_WIDTH,
                                                 BLOCK_HEIGHT, 1, 1, 1, 1,
-                                                maps::WB_ZERO, BLOCK_WIDTH,
-                                                BLOCK_HEIGHT, 1, -1,
+                                                maps::ZeroBoundaries, BLOCK_WIDTH,
+                                                BLOCK_HEIGHT, 1, 
                                                 maps::CustomOrdering<(B_TRANSPOSED ? 1 : 0), (B_TRANSPOSED ? 0 : 1)> > B,
                            maps::StructuredInjectiveSingleGPU<T, 2,
                                                               BLOCK_WIDTH,
@@ -153,12 +154,12 @@ void TestGEMM(int m, int k, int n)
 
     // Create structures
     maps::BlockSingleGPU<T, 2, A_TRANSPOSED ? 1 : 0, BLOCK_WIDTH, BLOCK_HEIGHT,
-                         1, 1, 1, 1, maps::WB_ZERO, BLOCK_WIDTH,
-                         BLOCK_HEIGHT, 1, -1,
+                         1, 1, 1, 1, maps::ZeroBoundaries, BLOCK_WIDTH,
+                         BLOCK_HEIGHT, 1,
                          maps::CustomOrdering<(A_TRANSPOSED ? 1 : 0), (A_TRANSPOSED ? 0 : 1)> > A;
     maps::BlockSingleGPU<T, 2, B_TRANSPOSED ? 0 : 1, BLOCK_WIDTH, BLOCK_HEIGHT,
-                         1, 1, 1, 1, maps::WB_ZERO, BLOCK_WIDTH,
-                         BLOCK_HEIGHT, 1, -1,
+                         1, 1, 1, 1, maps::ZeroBoundaries, BLOCK_WIDTH,
+                         BLOCK_HEIGHT, 1,
                          maps::CustomOrdering<(B_TRANSPOSED ? 1 : 0), (B_TRANSPOSED ? 0 : 1)> > B;
     maps::StructuredInjectiveSingleGPU<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> C;
     

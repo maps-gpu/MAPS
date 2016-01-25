@@ -64,7 +64,6 @@ namespace maps
              int CHUNKX = BLOCK_WIDTH, 
              typename DimensionOrdering = DefaultOrdering,
              typename GlobalIOScheme = DistinctIO, bool MULTI_GPU = true>
-	     bool MULTI_GPU = true>
     using Block1D = Block<T, 1, 0, BLOCK_WIDTH, 
                           BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 1, 1, 
                           BorderBehavior, CHUNKX, 1, 1,

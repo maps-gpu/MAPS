@@ -228,6 +228,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="block_matmul_test.cu" />
     <CudaCompile Include="block_perftest.cu" />
     <CudaCompile Include="block_test.cu" />
     <CudaCompile Include="input_common_test.cu" />

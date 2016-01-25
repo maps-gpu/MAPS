@@ -121,6 +121,7 @@
     <CudaCompile Include="block_perftest.cu" />
     <CudaCompile Include="invoke_multithreading_test.cu" />
     <CudaCompile Include="scheduler_test.cu" />
+    <CudaCompile Include="block_matmul_test.cu" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="MAPS">

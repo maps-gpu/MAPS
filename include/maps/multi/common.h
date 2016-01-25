@@ -175,10 +175,12 @@ namespace maps
             IDatum *datum;
             std::shared_ptr<ISegmenter> segmenter;
             std::shared_ptr<IContainerFactory> container_factory;
+            std::shared_ptr<::maps::IBoundaryConditions> boundary_conditions;
             ContainerSegmentation segmentation;
 
-            TaskInput(IDatum *dat, std::shared_ptr<ISegmenter> seg, std::shared_ptr<IContainerFactory> cf) : datum(dat), segmenter(seg),
-                container_factory(cf), segmentation() {}
+            TaskInput(IDatum *dat, std::shared_ptr<ISegmenter> seg, std::shared_ptr<IContainerFactory> cf,
+                      std::shared_ptr<::maps::IBoundaryConditions> bc) : datum(dat), segmenter(seg),
+                container_factory(cf), boundary_conditions(bc), segmentation() {}
         };
 
         struct TaskOutput
@@ -229,7 +231,7 @@ namespace maps
 
         /// @brief An unmodified function to be called instead of a kernel in a task. Kernels must run on the given stream,
         /// and cudaSetDevice must not be called during this routine (unless returned to original state).
-        typedef bool(*routine_t)(void *context, int deviceIdx, cudaStream_t stream,
+        typedef bool(routine_t)(void *context, int deviceIdx, cudaStream_t stream,
                                  const GridSegment& task_segment,
                                  const std::vector<void *>& parameters,
                                  const std::vector<DatumSegment>& container_segments,

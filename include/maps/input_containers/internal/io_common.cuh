@@ -46,149 +46,33 @@ namespace maps
     ////////////////////////////////////////////////////////////////////////
     // Global to register reads
     
-    template <typename T, GlobalReadScheme GRS = GR_DIRECT, 
-              int TEXTURE_UID = -1>
-    struct GlobalRead
+    struct IGlobalIOScheme
     {
+        template <typename T>
         static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
                                                       T& value);
+        template <typename T>
         static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
                                                       int stride, int offy, 
                                                       T& value);
-    };
-
-    // Indexed global read
-    template <typename T, BorderBehavior WB, int BLOCK_WIDTH, int BLOCK_HEIGHT,
-              int BLOCK_DEPTH, GlobalReadScheme GRS = GR_DIRECT, 
-              int TEXTURE_UID = -1>
-    struct IndexedRead
-    {
-        static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
-                                                      int width, T& value);
-        static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
-                                                      int width, int stride, 
-                                                      int offy, int height, 
+        template <typename T>
+        static __device__ __forceinline__ bool Read3D(const T *ptr, int offx,
+                                                      int stride, int offy,
+                                                      int height, int offz,
                                                       T& value);
+        template <typename T>
+        static __device__ __forceinline__ void Write(T *ptr, int offset,
+                                                     const T& value);
     };
-
-    template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH,
-              GlobalReadScheme GRS, int TEXTURE_UID>
-    struct IndexedRead<T, WB_NOCHECKS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
-                       GRS, TEXTURE_UID>
-    {
-        static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
-                                                      int width, T& value)
-        {
-            return GlobalRead<T, GRS, TEXTURE_UID>::Read1D(ptr, offset, value);
-        }
-
-        static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
-                                                      int width, int stride, 
-                                                      int offy, int height, 
-                                                      T& value)
-        {
-            return GlobalRead<T, GRS, TEXTURE_UID>::Read2D(ptr, offx, stride, 
-                                                           offy, value);
-        }
-    };
-
-    template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH,
-              GlobalReadScheme GRS, int TEXTURE_UID>
-    struct IndexedRead<T, WB_ZERO, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, GRS,
-                       TEXTURE_UID>
-    {
-        static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
-                                                      int width, T& value)
-        {
-            if (offset < 0 || offset >= width)
-            {
-                value = T(0);
-                return true;
-            }
-
-            return GlobalRead<T, GRS, TEXTURE_UID>::Read1D(ptr, offset, value);
-        }
-
-        static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
-                                                      int width, int stride, 
-                                                      int offy, int height, 
-                                                      T& value)
-        {
-            if (offx < 0 || offy < 0 || offx >= width || offy >= height)
-            {
-                value = T(0);
-                return true;
-            }
-            return GlobalRead<T, GRS, TEXTURE_UID>::Read2D(ptr, offx, stride, 
-                                                           offy, value);
-        }
-    };
-
-    template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH,
-              GlobalReadScheme GRS, int TEXTURE_UID>
-    struct IndexedRead<T, WB_COPY, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, GRS,
-                       TEXTURE_UID>
-    {
-        static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
-                                                      int width, T& value)
-        {
-            return GlobalRead<T, GRS, TEXTURE_UID>::Read1D(ptr, 
-              Clamp(offset, 0, width - 1), value);
-        }
-
-        static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
-                                                      int width, int stride, 
-                                                      int offy, int height, 
-                                                      T& value)
-        {
-            return GlobalRead<T, GRS, TEXTURE_UID>::Read2D(ptr, 
-              Clamp(offx, 0, width - 1), stride, Clamp(offy, 0, height - 1), 
-              value);
-        }
-    };
-
-    template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH,
-              GlobalReadScheme GRS, int TEXTURE_UID>
-    struct IndexedRead<T, WB_WRAP, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, GRS,
-                       TEXTURE_UID>
-    {
-        static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
-                                                      int width, T& value)
-        {
-            return GlobalRead<T, GRS, TEXTURE_UID>::Read1D(ptr, 
-              Wrap(offset, width), value);
-        }
-
-        static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
-                                                      int width, int stride,
-                                                      int offy, int height, 
-                                                      T& value)
-        {
-            return GlobalRead<T, GRS, TEXTURE_UID>::Read2D(ptr, 
-              Wrap(offx, width), stride, Wrap(offy, height), value);
-        }
-    };
-
-    ////////////////////////////////////////////////////////////////////////
-    // Global write from register
-
-    template <typename T>
-    struct GlobalWrite
-    {
-        static __device__ __forceinline__ void Write(T *ptr, int offset, 
-                                                     const T& value)
-        {
-            *(ptr + offset) = value;
-        }
-    };
+  
 
     ////////////////////////////////////////////////////////////////////////
     // Global to shared reads
 
     template <typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
               int BLOCK_DEPTH, int XSHARED, int XSTRIDE, int YSHARED, 
-              int ZSHARED, bool ASYNC, BorderBehavior BORDERS, 
-              GlobalReadScheme GRS = GR_DISTINCT, int TEXTURE_UID = -1>
+              int ZSHARED, bool ASYNC, typename BoundaryConditions, 
+              typename GlobalIOScheme>
     struct GlobalToShared
     {
         static __device__ __forceinline__ bool Read(const T *ptr, 
@@ -204,8 +88,7 @@ namespace maps
 
     template <typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT,
               int BLOCK_DEPTH, int DIMX, int DIMY, int DIMZ,
-              BorderBehavior BORDERS = WB_NOCHECKS,
-              GlobalReadScheme GRS = GR_DISTINCT, int TEXTURE_UID = -1>
+              typename BoundaryConditions, typename GlobalIOScheme>
     struct GlobalToArray
     {
         static __device__ __forceinline__ bool Read(const T *ptr, 
@@ -221,7 +104,8 @@ namespace maps
     // Register array to global write + helper structure
 
     template <typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, 
-              int BLOCK_DEPTH, int DIMX, int DIMY, int DIMZ>
+              int BLOCK_DEPTH, int DIMX, int DIMY, int DIMZ, 
+              typename GlobalIOScheme>
     struct ArrayToGlobal
     {
         static __device__ __forceinline__ bool Write(

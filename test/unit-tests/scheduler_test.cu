@@ -28,6 +28,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include <gtest/gtest.h>
+#include <functional>
 
 #include <maps/multi/multi.cuh>
 
@@ -85,6 +86,47 @@ TEST(Scheduler, FillBeforeAnalyze)
 
     ASSERT_EQ(sched.Fill(vec, FILL_VALUE), false);
 }
+
+// Test disabled due to CUDA 7.0 not compiling the code properly
+
+/*
+struct UnmodifiedFunctor
+{
+    bool m_bSuccess;
+
+    UnmodifiedFunctor() : m_bSuccess(false) {}
+
+    bool Routine(void *context, int deviceIdx, cudaStream_t stream,
+                 const maps::multi::GridSegment& atom_segment,
+                 const std::vector<void *>& parameters,
+                 const std::vector<maps::multi::DatumSegment>& container_segments,
+                 const std::vector<maps::multi::DatumSegment>& container_allocation)
+    {
+        m_bSuccess = true;
+        return true;
+    }
+
+};
+
+TEST(Scheduler, UnmodifiedRoutineBind)
+{
+    using namespace std::placeholders;
+
+    UnmodifiedFunctor functor;
+    ASSERT_EQ(functor.m_bSuccess, false);
+
+    maps::multi::Scheduler sched;
+    maps::multi::Vector<int> vec(10);
+    sched.AnalyzeCall(dim3(10), dim3(), maps::multi::StructuredInjectiveOutput<int, 1>(vec));
+
+    sched.InvokeUnmodified(
+        std::bind(&UnmodifiedFunctor::Routine, &functor, _1, _2, _3, _4, _5, _6, _7), nullptr, dim3(10),
+        maps::multi::StructuredInjectiveVectorO<int>(vec));
+
+    sched.WaitAll();
+    ASSERT_EQ(functor.m_bSuccess, true);
+}*/
+
 
 struct u128_t
 {

@@ -85,7 +85,7 @@ void Histogram_CPU(const unsigned char *in, size_t inStride, unsigned int *out, 
 }
 
 template<int BLOCK_WIDTH, int ITEMS_PER_THREAD>
-__global__ void HistogramMMAPS MAPS_MULTIDEF(maps::Window2D<uint8_t, BLOCK_WIDTH, 1, 0, maps::WB_ZERO, ITEMS_PER_THREAD> in, 
+__global__ void HistogramMMAPS MAPS_MULTIDEF(maps::Window2D<uint8_t, BLOCK_WIDTH, 1, 0, maps::ZeroBoundaries, ITEMS_PER_THREAD> in, 
                                              maps::ReductiveStaticOutput<unsigned int, BINS, BLOCK_WIDTH, ITEMS_PER_THREAD> out)
 {
     MAPS_MULTI_INITVARS(in, out);
@@ -187,7 +187,7 @@ bool TestHistogramMultiGPU(int ngpus)
     dim3 grid_dims(maps::RoundUp((int)width / ITEMS_PER_THREAD, block_dims.x), maps::RoundUp((int)height, block_dims.y), 1);
 
     maps::multi::AnalyzeCall(sched, grid_dims, block_dims,
-                             maps::multi::Window2D<uint8_t, BLOCK_WIDTH, 1, 0, maps::WB_ZERO, ITEMS_PER_THREAD>(image),
+                             maps::multi::Window2D<uint8_t, BLOCK_WIDTH, 1, 0, maps::ZeroBoundaries, ITEMS_PER_THREAD>(image),
                              maps::multi::ReductiveStaticOutput<unsigned int, BINS, BLOCK_WIDTH, ITEMS_PER_THREAD>(hist));
 
     image.Bind(&host_image[0], sizeof(unsigned char) * width);
@@ -209,7 +209,7 @@ bool TestHistogramMultiGPU(int ngpus)
     for (int i = 0; i < FLAGS_repetitions; i++)
     {
         maps::multi::Invoke(sched, HistogramMMAPS<BLOCK_WIDTH, ITEMS_PER_THREAD>, grid_dims, block_dims,
-                            maps::multi::Window2D<unsigned char, BLOCK_WIDTH, 1, 0, maps::WB_ZERO, ITEMS_PER_THREAD>(image),
+                            maps::multi::Window2D<unsigned char, BLOCK_WIDTH, 1, 0, maps::ZeroBoundaries, ITEMS_PER_THREAD>(image),
                             maps::multi::ReductiveStaticOutput<unsigned int, BINS, BLOCK_WIDTH, ITEMS_PER_THREAD>(hist));
     }
 

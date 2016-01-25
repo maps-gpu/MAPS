@@ -183,25 +183,9 @@ namespace maps
         /**
         * Computes index after boundary conditions.
         */
-        static inline int64_t ComputeBoundary(int64_t ind, BorderBehavior border, size_t dimsize)
+        static inline int64_t ComputeBoundary(int64_t ind, const IBoundaryConditions& border, size_t dimsize)
         {
-            switch (border)
-            {
-            default:
-            case WB_NOCHECKS:
-            case WB_ZERO:
-                return ind;
-            case WB_COPY:
-                return ::maps::Clamp(ind, (int64_t)0, (int64_t)dimsize - 1);
-            case WB_WRAP:
-                if (dimsize == 0)
-                    return 0;
-                while (ind < 0)
-                    ind += (int64_t)dimsize;
-                while (ind >= (int64_t)dimsize)
-                    ind -= (int64_t)dimsize;
-                return ind;
-            }
+            return border.ComputeIndex(ind, dimsize);
         }
 
         struct DatumSegment
@@ -215,9 +199,6 @@ namespace maps
             /// Dimensions of the segment
             std::vector<size_t> m_dimensions;
 
-            /// Used when segment goes out of the bounds of the datum
-            ::maps::BorderBehavior m_borders;
-
             /// Tells the scheduler that this segment is to be filled with fillValue, instead of copied to
             bool m_bFill;
 
@@ -227,7 +208,7 @@ namespace maps
             /// Stride of the datum (only filled when calling unmodified routines)
             size_t m_stride_bytes;
 
-            DatumSegment() : m_dims(0), m_borders(::maps::WB_ZERO), m_bFill(false), m_fillValue(0), m_stride_bytes(0) { }
+            DatumSegment() : m_dims(0), m_bFill(false), m_fillValue(0), m_stride_bytes(0) { }
             DatumSegment(unsigned int dims) : m_dims(dims), m_offset(dims, 0), m_dimensions(dims, 0),
                                               m_bFill(false), m_fillValue(0), m_stride_bytes(0) { }
             DatumSegment(IDatum *datum) : m_dims(datum->GetDataDimensions()), m_offset(datum->GetDataDimensions(), 0), 
@@ -297,7 +278,7 @@ namespace maps
             /**
              * @brief Computes the pointer w.r.t to an offset and boundary conditions
              */
-            inline void *OffsetPtrBounds(void *ptr, IDatum *datum, size_t element_size, size_t stride_bytes) const
+            inline void *OffsetPtrBounds(void *ptr, IDatum *datum, const IBoundaryConditions& bound, size_t element_size, size_t stride_bytes) const
             {
 #ifndef NDEBUG
                 if (!datum)
@@ -312,7 +293,7 @@ namespace maps
                 size_t curSize = 1;
                 for (unsigned int i = 0; i < m_dims; ++i)
                 {
-                    int64_t off = ComputeBoundary(m_offset[i], m_borders, datum->GetDataDimension(i));
+                    int64_t off = ComputeBoundary(m_offset[i], bound, datum->GetDataDimension(i));
                     byteOffset += ((i == 0) ? element_size : curSize) * off;
                     curSize    *= ((i == 0) ? stride_bytes : m_dimensions[i]);
                 }
@@ -464,7 +445,7 @@ namespace maps
                 size_t result = 0;
 
                 // Datum segment, static portion
-                result += sizeof(uint32_t) + sizeof(::maps::BorderBehavior) + sizeof(uint8_t) + sizeof(int32_t) + sizeof(uint64_t);
+                result += sizeof(uint32_t) + sizeof(uint8_t) + sizeof(int32_t) + sizeof(uint64_t);
                 // Datum segment, dynamic portion
                 result += m_dims * (sizeof(int64_t) + sizeof(uint64_t));
 
@@ -480,7 +461,7 @@ namespace maps
         * erroneous results).
         */
         static bool IntersectsWith(const DatumSegment& a, const DatumSegment& b, 
-                                   BorderBehavior border, const IDatum *datum)
+                                   const IBoundaryConditions& border, const IDatum *datum)
         {
 #ifndef NDEBUG
             if (datum == nullptr)
@@ -510,6 +491,7 @@ namespace maps
         }
 
         static bool Intersection(const DatumSegment& a, const DatumSegment& b, IDatum *datum,
+                                 const IBoundaryConditions& borders_a, const IBoundaryConditions& borders_b,
                                  DatumSegment& intersection_offset_a, DatumSegment& intersection_offset_b)
         {
 #ifndef NDEBUG
@@ -532,10 +514,10 @@ namespace maps
                 int64_t ad2 = a.m_offset[dim] + a.m_dimensions[dim] - 1;
                 int64_t bd1 = b.m_offset[dim];
                 int64_t bd2 = b.m_offset[dim] + b.m_dimensions[dim] - 1;
-                int64_t adb1 = ComputeBoundary(a.m_offset[dim],                           a.m_borders, datum->GetDataDimension(dim));
-                int64_t adb2 = ComputeBoundary(a.m_offset[dim] + a.m_dimensions[dim] - 1, a.m_borders, datum->GetDataDimension(dim));
-                int64_t bdb1 = ComputeBoundary(b.m_offset[dim],                           b.m_borders, datum->GetDataDimension(dim));
-                int64_t bdb2 = ComputeBoundary(b.m_offset[dim] + b.m_dimensions[dim] - 1, b.m_borders, datum->GetDataDimension(dim));
+                int64_t adb1 = ComputeBoundary(a.m_offset[dim],                           borders_a, datum->GetDataDimension(dim));
+                int64_t adb2 = ComputeBoundary(a.m_offset[dim] + a.m_dimensions[dim] - 1, borders_a, datum->GetDataDimension(dim));
+                int64_t bdb1 = ComputeBoundary(b.m_offset[dim],                           borders_b, datum->GetDataDimension(dim));
+                int64_t bdb2 = ComputeBoundary(b.m_offset[dim] + b.m_dimensions[dim] - 1, borders_b, datum->GetDataDimension(dim));
 
                 // Compute intersection with boundaries, use original values to get offsets
                 int64_t bound_offset = std::max(adb1, bdb1);

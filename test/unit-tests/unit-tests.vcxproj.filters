@@ -26,9 +26,6 @@
     <ClInclude Include="..\..\include\maps\input_containers\internal\io_common.cuh">
       <Filter>MAPS\Input Containers\Internal</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\maps\input_containers\internal\io_globalread.cuh">
-      <Filter>MAPS\Input Containers\Internal</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\maps\input_containers\internal\io_globaltoarray.cuh">
       <Filter>MAPS\Input Containers\Internal</Filter>
     </ClInclude>
@@ -103,6 +100,12 @@
     </ClInclude>
     <ClInclude Include="..\..\include\maps\output_containers\reductive.cuh">
       <Filter>MAPS\Output Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_boundaries.cuh">
+      <Filter>MAPS\Input Containers\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\maps\input_containers\internal\io_global.cuh">
+      <Filter>MAPS\Input Containers\Internal</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -112,7 +112,6 @@ namespace maps
 
                             // Prepare the main data segment:
                             DatumSegment dataseg(1);
-                            dataseg.m_borders = WB_NOCHECKS;
 
                             dataseg.m_offset[0] = 
                                 (int64_t)xoff_begin * 
@@ -217,7 +216,6 @@ namespace maps
 
                             // Prepare the main data segment:
                             DatumSegment dataseg(1);
-                            dataseg.m_borders = WB_NOCHECKS;
 
                             dataseg.m_offset[0] = (int64_t) begin;
                             dataseg.m_dimensions[0] = (int64_t)(end - begin);
@@ -250,7 +248,8 @@ namespace maps
             template<typename TContainer>
             static inline void AppendInputArgToTask(Task& task, const TContainer& arg)
             {
-                task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+                task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                                std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
                 task.argument_ordering.push_back(AT_INPUT);
             }
 

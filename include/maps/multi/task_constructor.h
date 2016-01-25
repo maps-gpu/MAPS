@@ -68,68 +68,77 @@ namespace maps
         // INPUT CONTAINERS        
 
         template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int WINDOW_APRON,
-                 BorderBehavior BORDER, int ITEMS_PER_THREAD, int ROWS_PER_THREAD>
-        inline void ConstructArgs(Task& task, const Window2D<T, BLOCK_WIDTH, BLOCK_HEIGHT, WINDOW_APRON, BORDER, ITEMS_PER_THREAD, ROWS_PER_THREAD>& arg)
+                 typename BoundaryConditions, int ITEMS_PER_THREAD, int ROWS_PER_THREAD>
+        inline void ConstructArgs(Task& task, const Window2D<T, BLOCK_WIDTH, BLOCK_HEIGHT, WINDOW_APRON, BoundaryConditions, ITEMS_PER_THREAD, ROWS_PER_THREAD>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(), 
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
         template<typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, int WINDOW_APRON, int IPX, int IPY, int IPZ,
-                 BorderBehavior BORDER>
-        inline void ConstructArgs(Task& task, const Window<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, WINDOW_APRON, IPX, IPY, IPZ, BORDER>& arg)
+                 typename BoundaryConditions>
+        inline void ConstructArgs(Task& task, const Window<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, WINDOW_APRON, IPX, IPY, IPZ, BoundaryConditions>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
-        template<typename T, int WINDOW_APRON, BorderBehavior BORDER>
-        inline void ConstructArgs(Task& task, const Window2DUnmodified<T, WINDOW_APRON, BORDER>& arg)
+        template<typename T, int WINDOW_APRON, typename BoundaryConditions>
+        inline void ConstructArgs(Task& task, const Window2DUnmodified<T, WINDOW_APRON, BoundaryConditions>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
-        template<typename T, int WINDOW_APRON, BorderBehavior BORDER>
-        inline void ConstructArgs(Task& task, const Window4DUnmodified<T, WINDOW_APRON, BORDER>& arg)
+        template<typename T, int WINDOW_APRON, typename BoundaryConditions>
+        inline void ConstructArgs(Task& task, const Window4DUnmodified<T, WINDOW_APRON, BoundaryConditions>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
         template<typename T, int WINDOW_APRON_X, int WINDOW_APRON_Y, int STRIDE_X, int STRIDE_Y>
         inline void ConstructArgs(Task& task, const Window3DLayeredUnmodified<T, WINDOW_APRON_X, WINDOW_APRON_Y, STRIDE_X, STRIDE_Y>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
         template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX, int IPY, int IPZ,
-                 BorderBehavior BORDER>
-            inline void ConstructArgs(Task& task, const Block<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, BORDER>& arg)
+                 typename BoundaryConditions>
+            inline void ConstructArgs(Task& task, const Block<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, BoundaryConditions>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
         template<typename T>
         inline void ConstructArgs(Task& task, const Block1DUnmodified<T>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
         template<bool TRANSPOSED, typename T>
         inline void ConstructArgs(Task& task, const Block2DUnmodified<TRANSPOSED, T>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
         template<bool TRANSPOSED, typename T>
         inline void ConstructArgs(Task& task, const Block2D4DUnmodified<TRANSPOSED, T>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new ::maps::NoBoundaries)));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
@@ -149,8 +158,8 @@ namespace maps
         /////////////////////////////////////////////////////////
         // OUTPUT CONTAINERS
 
-        template<typename T, int DIMS, int ITEMS_PER_THREAD, int ROWS_PER_THREAD, ILPScheme ILP_SCHEME>
-        inline void ConstructArgs(Task& task, const StructuredInjectiveOutput<T, DIMS, ITEMS_PER_THREAD, ROWS_PER_THREAD, ILP_SCHEME>& arg)
+        template<typename T, int DIMS, int ITEMS_PER_THREAD, int ROWS_PER_THREAD>
+        inline void ConstructArgs(Task& task, const StructuredInjectiveOutput<T, DIMS, ITEMS_PER_THREAD, ROWS_PER_THREAD>& arg)
         {
             // Notify the scheduler to segment the kernels by this output automatically
             if (task.segmentation_output_index < 0)

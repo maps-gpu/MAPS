@@ -37,7 +37,8 @@
 #include "cuda_gtest_utils.h"
 
 #include <maps/input_containers/internal/io_common.cuh>
-#include <maps/input_containers/internal/io_globalread.cuh>
+#include <maps/input_containers/internal/io_global.cuh>
+#include <maps/input_containers/internal/io_boundaries.cuh>
 #include <maps/input_containers/internal/io_globaltoshared.cuh>
 #include <maps/input_containers/internal/io_globaltoarray.cuh>
 #include <maps/multi/multi.cuh>
@@ -79,7 +80,7 @@ __constant__ float kConvKernel[(MAX_WINDOW_RADIUS * 2 + 1) *
                                (MAX_WINDOW_RADIUS * 2 + 1) *
                                (MAX_WINDOW_RADIUS * 2 + 1)];
 
-template <int DIMS, int RADIUS, maps::BorderBehavior BORDERS>
+template <int DIMS, int RADIUS, typename BoundaryConditions>
 struct ConvRegression
 {
     static void RunConvRegression(float *device_in, float *device_out, 
@@ -92,9 +93,9 @@ struct ConvRegression
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-          int RADIUS, maps::BorderBehavior BORDERS, int IPX = 1, 
+          int RADIUS, typename BoundaryConditions, int IPX = 1, 
           int IPY = 1, int IPZ = 1>
-__global__ void MAPSConvolution(maps::WindowSingleGPU<float, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, RADIUS, IPX, IPY, IPZ, BORDERS> in,
+__global__ void MAPSConvolution(maps::WindowSingleGPU<float, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, RADIUS, IPX, IPY, IPZ, BoundaryConditions> in,
                                 maps::StructuredInjectiveSingleGPU<float, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY> out)
 {    
     MAPS_INIT(in, out);
@@ -125,30 +126,16 @@ __global__ void MAPSConvolution(maps::WindowSingleGPU<float, DIMS, BLOCK_WIDTH, 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<maps::BorderBehavior BORDERS>
+template<typename BoundaryConditions>
 __device__ float GetElement1D(const float *buffer, int width, int x)
 {
-    switch (BORDERS)
-    {
-    default:
-    case maps::WB_NOCHECKS:
-        return buffer[x];
-
-    case maps::WB_COPY:
-        return buffer[maps::Clamp(x, 0, width - 1)];
-
-    case maps::WB_WRAP:
-        return buffer[maps::Wrap(x, width)];
-
-    case maps::WB_ZERO:
-        if (x < 0 || x >= width)
-            return 0.0f;
-
-        return buffer[x];
-    }
+    float val;
+    BoundaryConditions::template Read1D<float, maps::DirectIO>(
+        buffer, x, width, val);
+    return val;
 }
 
-template<int WINDOW_RADIUS, maps::BorderBehavior BORDERS>
+template<int WINDOW_RADIUS, typename BoundaryConditions>
 __global__ void Conv1Regression(const float *buffer, int width,
                                 float *result)
 {
@@ -160,13 +147,13 @@ __global__ void Conv1Regression(const float *buffer, int width,
 
     #pragma unroll
     for (int i = 0; i < WINDOW_RADIUS * 2 + 1; ++i)
-        local_result += kConvKernel[i] * GetElement1D<BORDERS>(buffer, width, x + i - WINDOW_RADIUS);
+        local_result += kConvKernel[i] * GetElement1D<BoundaryConditions>(buffer, width, x + i - WINDOW_RADIUS);
 
     result[x] = local_result;
 }
 
-template <int RADIUS, maps::BorderBehavior BORDERS>
-struct ConvRegression<1, RADIUS, BORDERS>
+template <int RADIUS, typename BoundaryConditions>
+struct ConvRegression<1, RADIUS, BoundaryConditions>
 {
     static void RunConvRegression(float *device_in, float *device_out, 
                                   float *host_output, unsigned int buffer_size[1])
@@ -176,7 +163,7 @@ struct ConvRegression<1, RADIUS, BORDERS>
         dim3 block_dims(BW);
         dim3 grid_dims(maps::RoundUp(buffer_size[0], BW));
 
-        Conv1Regression<RADIUS, BORDERS> <<<grid_dims, block_dims>>>(
+        Conv1Regression<RADIUS, BoundaryConditions> <<<grid_dims, block_dims>>>(
             device_in, buffer_size[0], device_out);
 
         ASSERT_EQ(cudaGetLastError(), cudaSuccess);
@@ -189,32 +176,18 @@ struct ConvRegression<1, RADIUS, BORDERS>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<maps::BorderBehavior BORDERS>
+template<typename BoundaryConditions>
 __device__ float GetElement2D(const float *buffer, int width,
                               int height, unsigned int stride,
                               int x, int y)
 {
-    switch (BORDERS)
-    {
-    default:
-    case maps::WB_NOCHECKS:
-        return buffer[y * stride + x];
-
-    case maps::WB_COPY:
-        return buffer[maps::Clamp(y, 0, height - 1) * stride + maps::Clamp(x, 0, width - 1)];
-
-    case maps::WB_WRAP:
-        return buffer[maps::Wrap(y, height) * stride + maps::Wrap(x, width)];
-
-    case maps::WB_ZERO:
-        if (y < 0 || y >= height || x < 0 || x >= width)
-            return 0.0f;
-
-        return buffer[y * stride + x];
-    }
+    float val;
+    BoundaryConditions::template Read2D<float, maps::DirectIO>(
+        buffer, x, width, stride, y, height, val);
+    return val;
 }
 
-template<int WINDOW_RADIUS, maps::BorderBehavior BORDERS>
+template<int WINDOW_RADIUS, typename BoundaryConditions>
 __global__ void Conv2Regression(const float *buffer, int width, 
                                 int height, unsigned int stride,
                                 float *result)
@@ -233,8 +206,8 @@ __global__ void Conv2Regression(const float *buffer, int width,
         for (int j = 0; j < WINDOW_RADIUS * 2 + 1; ++j)
         {
             local_result += kConvKernel[i * (WINDOW_RADIUS * 2 + 1) + j] *
-                            GetElement2D<BORDERS>(buffer, width, height, stride,
-                                                  x + j - WINDOW_RADIUS, y + i - WINDOW_RADIUS);
+                GetElement2D<BoundaryConditions>(buffer, width, height, stride,
+                                                 x + j - WINDOW_RADIUS, y + i - WINDOW_RADIUS);
         }
     }
     
@@ -242,8 +215,8 @@ __global__ void Conv2Regression(const float *buffer, int width,
 }
 
 
-template <int RADIUS, maps::BorderBehavior BORDERS>
-struct ConvRegression<2, RADIUS, BORDERS>
+template <int RADIUS, typename BoundaryConditions>
+struct ConvRegression<2, RADIUS, BoundaryConditions>
 {
     static void RunConvRegression(float *device_in, float *device_out, 
                                   float *host_output, unsigned int buffer_size[2])
@@ -254,7 +227,7 @@ struct ConvRegression<2, RADIUS, BORDERS>
         dim3 grid_dims(maps::RoundUp(buffer_size[0], BW),
                        maps::RoundUp(buffer_size[1], BH));
 
-        Conv2Regression<RADIUS, BORDERS> <<<grid_dims, block_dims>>>(
+        Conv2Regression<RADIUS, BoundaryConditions> <<<grid_dims, block_dims>>>(
             device_in, buffer_size[0], buffer_size[1],
             buffer_size[0], device_out);
 
@@ -268,32 +241,18 @@ struct ConvRegression<2, RADIUS, BORDERS>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<maps::BorderBehavior BORDERS>
+template<typename BoundaryConditions>
 __device__ float GetElement3D(const float *buffer, int lx, int ly,
                               int lz, unsigned int stride, 
                               int x, int y, int z)
 {
-    switch (BORDERS)
-    {
-    default:
-    case maps::WB_NOCHECKS:
-        return buffer[z * ly * stride + y * stride + x];
-
-    case maps::WB_COPY:
-        return buffer[maps::Clamp(z, 0, lz - 1) * ly * stride + maps::Clamp(y, 0, ly - 1) * stride + maps::Clamp(x, 0, lx - 1)];
-
-    case maps::WB_WRAP:
-        return buffer[maps::Wrap(z, lz) * ly * stride + maps::Wrap(y, ly) * stride + maps::Wrap(x, lx)];
-
-    case maps::WB_ZERO:
-        if (z < 0 || z >= lz || y < 0 || y >= ly || x < 0 || x >= lx)
-            return 0.0f;
-
-        return buffer[z * ly * stride + y * stride + x];
-    }
+    float val;
+    BoundaryConditions::template Read3D<float, maps::DirectIO>(
+        buffer, x, lx, stride, y, ly, z, lz, val);
+    return val;
 }
 
-template<int WINDOW_RADIUS, maps::BorderBehavior BORDERS>
+template<int WINDOW_RADIUS, typename BoundaryConditions>
 __global__ void Conv3Regression(const float *buffer, int lx, 
                                 int ly, int lz, 
                                 unsigned int stride, float *result)
@@ -319,10 +278,10 @@ __global__ void Conv3Regression(const float *buffer, int lx,
                           j * (WINDOW_RADIUS * 2 + 1) + k;
 
                 local_result += kConvKernel[ind] *
-                                GetElement3D<BORDERS>(buffer, lx, ly, lz, stride,
-                                                      x + k - WINDOW_RADIUS, 
-                                                      y + j - WINDOW_RADIUS,
-                                                      z + i - WINDOW_RADIUS);
+                    GetElement3D<BoundaryConditions>(buffer, lx, ly, lz, stride,
+                                                     x + k - WINDOW_RADIUS, 
+                                                     y + j - WINDOW_RADIUS,
+                                                     z + i - WINDOW_RADIUS);
             }
         }
     }
@@ -330,8 +289,8 @@ __global__ void Conv3Regression(const float *buffer, int lx,
     result[z * ly * stride + y * stride + x] = local_result;
 }
 
-template <int RADIUS, maps::BorderBehavior BORDERS>
-struct ConvRegression<3, RADIUS, BORDERS>
+template <int RADIUS, typename BoundaryConditions>
+struct ConvRegression<3, RADIUS, BoundaryConditions>
 {
     static void RunConvRegression(float *device_in, float *device_out, 
                                   float *host_output, unsigned int buffer_size[3])
@@ -343,7 +302,7 @@ struct ConvRegression<3, RADIUS, BORDERS>
                        maps::RoundUp(buffer_size[1], BH), 
                        maps::RoundUp(buffer_size[2], BD));
 
-        Conv3Regression<RADIUS, BORDERS><<<grid_dims, block_dims>>>(
+        Conv3Regression<RADIUS, BoundaryConditions><<<grid_dims, block_dims>>>(
             device_in, buffer_size[0], buffer_size[1], 
             buffer_size[2], buffer_size[0], device_out);
 
@@ -370,21 +329,19 @@ inline void CheckDevices(int& num_gpus)
     ASSERT_GE(num_gpus, 1);
 }
 
-static inline const char *BoundariesToString(maps::BorderBehavior borders)
+template <typename BoundaryConditions>
+static inline const char *BoundariesToString()
 {
-    switch (borders)
-    {
-    default:
-        return "N/A";
-    case maps::WB_NOCHECKS:
+    if (std::is_same<BoundaryConditions, maps::NoBoundaries>::value)
         return "unchecked";
-    case maps::WB_WRAP:
+    else if (std::is_same<BoundaryConditions, maps::WrapBoundaries>::value)
         return "wrapped";
-    case maps::WB_COPY:
+    else if (std::is_same<BoundaryConditions, maps::ClampBoundaries>::value)
         return "clamped";
-    case maps::WB_ZERO:
+    else if (std::is_same<BoundaryConditions, maps::ZeroBoundaries>::value)
         return "zero";
-    }
+    else
+        return "N/A";
 }
 
 template <int DIMS>
@@ -399,7 +356,7 @@ std::string BufferSize(unsigned int buffer_size[DIMS])
     return ss.str();
 }
 
-template <int DIMS, int RADIUS, maps::BorderBehavior BORDERS, int IPX = 1, int IPY = 1, int IPZ = 1>
+template <int DIMS, int RADIUS, typename BoundaryConditions, int IPX = 1, int IPY = 1, int IPZ = 1>
 void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
                 float *host_kernel, float *buffer_in, float *buffer_out,
                 float *buffer_regression, float *device_in, float *device_out)
@@ -408,7 +365,7 @@ void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
     CheckDevices(num_gpus);
 
     // Verify that the buffer is large enough to handle NOCHECKS
-    if (BORDERS == maps::WB_NOCHECKS)
+    if (std::is_same<BoundaryConditions, maps::NoBoundaries>::value)
     {
         for (int i = 0; i < DIMS; ++i)
         {
@@ -421,7 +378,7 @@ void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
     }
 
     // Verify that wrap will work (it will not wrap the buffer more than once)
-    if (BORDERS == maps::WB_WRAP)
+    if (std::is_same<BoundaryConditions, maps::WrapBoundaries>::value)
     {
         for (int i = 0; i < DIMS; ++i)
         {
@@ -505,7 +462,7 @@ void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
         total_size *= buffer_size[i];
 
     maps::WindowSingleGPU<float, DIMS, BW, ((DIMS >= 2) ? BH : 1),
-                    ((DIMS >= 3) ? BD : 1), RADIUS, IPX, IPY, IPZ, BORDERS> win;
+                    ((DIMS >= 3) ? BD : 1), RADIUS, IPX, IPY, IPZ, BoundaryConditions> win;
     win.m_ptr = device_in;
     win.m_stride = buffer_size[0];
     
@@ -528,7 +485,7 @@ void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
                     (DIMS >= 3) ? BD : 1);
     
     MAPSConvolution<DIMS, BW, ((DIMS >= 2) ? BH : 1), 
-                    ((DIMS >= 3) ? BD : 1), RADIUS, BORDERS, IPX, IPY, IPZ> <<<grid_dims, block_dims>>>(win, soout);
+                    ((DIMS >= 3) ? BD : 1), RADIUS, BoundaryConditions, IPX, IPY, IPZ> <<<grid_dims, block_dims>>>(win, soout);
     CUASSERT_NOERR(cudaGetLastError());
     CUASSERT_NOERR(cudaDeviceSynchronize());
 
@@ -543,11 +500,11 @@ void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
                 << " (" << buffer_out[i] << " != " << buffer_in[i]
                 << ") when convolving a " << BufferSize<DIMS>(buffer_size)
                 << " buffer with a kernel with radius " << RADIUS
-                << ", using " << BoundariesToString(BORDERS) << " boundaries";
+                << ", using " << BoundariesToString<BoundaryConditions>() << " boundaries";
     }
     else // Otherwise, use regression
     {
-        ConvRegression<DIMS, RADIUS, BORDERS>::RunConvRegression(
+        ConvRegression<DIMS, RADIUS, BoundaryConditions>::RunConvRegression(
             device_in, device_out, buffer_regression, buffer_size);
 
         for (size_t i = 0; i < total_size; ++i)
@@ -556,7 +513,7 @@ void TestWindow(bool random_kernel, unsigned int buffer_size[DIMS],
                 << " (" << buffer_out[i] << " != " << buffer_regression[i]
                 << ") when convolving a " << BufferSize<DIMS>(buffer_size)
                 << " buffer with a kernel with radius " << RADIUS
-                << ", using " << BoundariesToString(BORDERS) << " boundaries";
+                << ", using " << BoundariesToString<BoundaryConditions>() << " boundaries";
     }
 }
 
@@ -566,12 +523,12 @@ struct WindowRadiusLoop
     static void Loop(unsigned int size[DIMS], float *hKernel, float *hIn, float *hOut,
                      float *hRegression, float *dRegressionIn, float *dRegressionOut)
     {
-        TestWindow<DIMS, RAD_COUNTER, maps::WB_WRAP>(RANDOMIZED, size, hKernel, hIn, hOut, 
-                                                     hRegression, dRegressionIn, dRegressionOut);
-        TestWindow<DIMS, RAD_COUNTER, maps::WB_COPY>(RANDOMIZED, size, hKernel, hIn, hOut, 
-                                                     hRegression, dRegressionIn, dRegressionOut);
-        TestWindow<DIMS, RAD_COUNTER, maps::WB_ZERO>(RANDOMIZED, size, hKernel, hIn, hOut, 
-                                                     hRegression, dRegressionIn, dRegressionOut);
+        TestWindow<DIMS, RAD_COUNTER, maps::WrapBoundaries>(RANDOMIZED, size, hKernel, hIn, hOut, 
+                                                            hRegression, dRegressionIn, dRegressionOut);
+        TestWindow<DIMS, RAD_COUNTER, maps::ClampBoundaries>(RANDOMIZED, size, hKernel, hIn, hOut, 
+                                                             hRegression, dRegressionIn, dRegressionOut);
+        TestWindow<DIMS, RAD_COUNTER, maps::ZeroBoundaries>(RANDOMIZED, size, hKernel, hIn, hOut, 
+                                                            hRegression, dRegressionIn, dRegressionOut);
 
         WindowRadiusLoop<DIMS, RANDOMIZED, RAD_COUNTER + 1, RAD_END>::Loop(size, hKernel, hIn, hOut,
                                                                            hRegression, dRegressionIn, 
@@ -585,12 +542,12 @@ struct WindowRadiusLoop<DIMS, RANDOMIZED, RAD_END, RAD_END>
     static void Loop(unsigned int size[DIMS], float *hKernel, float *hIn, float *hOut,
                      float *hRegression, float *dRegressionIn, float *dRegressionOut)
     {
-        TestWindow<DIMS, RAD_END, maps::WB_WRAP>(RANDOMIZED, size, hKernel, hIn, hOut,
-                                                 hRegression, dRegressionIn, dRegressionOut);
-        TestWindow<DIMS, RAD_END, maps::WB_COPY>(RANDOMIZED, size, hKernel, hIn, hOut,
-                                                 hRegression, dRegressionIn, dRegressionOut);
-        TestWindow<DIMS, RAD_END, maps::WB_ZERO>(RANDOMIZED, size, hKernel, hIn, hOut,
-                                                 hRegression, dRegressionIn, dRegressionOut);
+        TestWindow<DIMS, RAD_END, maps::WrapBoundaries>(RANDOMIZED, size, hKernel, hIn, hOut,
+                                                        hRegression, dRegressionIn, dRegressionOut);
+        TestWindow<DIMS, RAD_END, maps::ClampBoundaries>(RANDOMIZED, size, hKernel, hIn, hOut,
+                                                         hRegression, dRegressionIn, dRegressionOut);
+        TestWindow<DIMS, RAD_END, maps::ZeroBoundaries>(RANDOMIZED, size, hKernel, hIn, hOut,
+                                                        hRegression, dRegressionIn, dRegressionOut);
     }
 };
 
@@ -600,8 +557,8 @@ struct WindowRadiusLoopNoChecks
     static void Loop(unsigned int size[DIMS], float *hKernel, float *hIn, float *hOut,
                      float *hRegression, float *dRegressionIn, float *dRegressionOut)
     {
-        TestWindow<DIMS, RAD_COUNTER, maps::WB_NOCHECKS>(RANDOMIZED, size, hKernel, hIn, hOut,
-                                                         hRegression, dRegressionIn, dRegressionOut);
+        TestWindow<DIMS, RAD_COUNTER, maps::NoBoundaries>(RANDOMIZED, size, hKernel, hIn, hOut,
+                                                          hRegression, dRegressionIn, dRegressionOut);
 
         WindowRadiusLoopNoChecks<DIMS, RANDOMIZED, RAD_COUNTER + 1, RAD_END>::Loop(
             size, hKernel, hIn, hOut, hRegression, dRegressionIn, dRegressionOut);
@@ -614,8 +571,8 @@ struct WindowRadiusLoopNoChecks<DIMS, RANDOMIZED, RAD_END, RAD_END>
     static void Loop(unsigned int size[DIMS], float *hKernel, float *hIn, float *hOut,
                      float *hRegression, float *dRegressionIn, float *dRegressionOut)
     {
-        TestWindow<DIMS, RAD_END, maps::WB_NOCHECKS>(RANDOMIZED, size, hKernel, hIn, hOut,
-                                                     hRegression, dRegressionIn, dRegressionOut);
+        TestWindow<DIMS, RAD_END, maps::NoBoundaries>(RANDOMIZED, size, hKernel, hIn, hOut,
+                                                      hRegression, dRegressionIn, dRegressionOut);
     }
 };
 
@@ -812,10 +769,10 @@ TEST(Window, Window2DILP)
         cudaMemcpyHostToDevice), cudaSuccess);
 
     #define TEST_WINDOW_ILP(IPX, IPY) do {                                              \
-        TestWindow<2, 0, maps::WB_WRAP, IPX, IPY>(                                      \
+        TestWindow<2, 0, maps::WrapBoundaries, IPX, IPY>(                               \
             true, size, &hKernel[0], &hBuffIn[0], &hBuffOut[0], &hBuffRegression[0],    \
             dRegressionIn, dRegressionOut);                                             \
-        TestWindow<2, 1, maps::WB_WRAP, IPX, IPY>(                                      \
+        TestWindow<2, 1, maps::WrapBoundaries, IPX, IPY>(                               \
             true, size, &hKernel[0], &hBuffIn[0], &hBuffOut[0], &hBuffRegression[0],    \
             dRegressionIn, dRegressionOut);                                             \
     } while (0)
@@ -844,7 +801,7 @@ TEST(Window, Window2DILP)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <int BLOCK_WIDTH, int RADIUS>
-__global__ void RelativeIndex1DKernel(maps::WindowSingleGPU<float, 1, BLOCK_WIDTH, 1, 1, RADIUS, 1, 1, 1, maps::WB_WRAP> in,
+__global__ void RelativeIndex1DKernel(maps::WindowSingleGPU<float, 1, BLOCK_WIDTH, 1, 1, RADIUS, 1, 1, 1, maps::WrapBoundaries> in,
                                       maps::StructuredInjectiveSingleGPU<float, 1, BLOCK_WIDTH, 1, 1> out)
 {
     __shared__ typename decltype(in)::SharedData sdata;
@@ -890,7 +847,7 @@ TEST(Window, RelativeIndex1D)
     CUASSERT_NOERR(cudaMemcpy(d_in, &in_val[0], sizeof(float) * TOTAL_SIZE, cudaMemcpyHostToDevice));
 
     // Create structures
-    maps::WindowSingleGPU<float, 1, BLOCK_WIDTH, 1, 1, 1, 1, 1, 1, maps::WB_WRAP> win;
+    maps::WindowSingleGPU<float, 1, BLOCK_WIDTH, 1, 1, 1, 1, 1, 1, maps::WrapBoundaries> win;
     win.m_ptr = d_in;
     win.m_stride = win.m_dimensions[0] = TOTAL_SIZE;
 
@@ -915,7 +872,7 @@ TEST(Window, RelativeIndex1D)
 
 
 template <int BLOCK_WIDTH, int BLOCK_HEIGHT, int RADIUS>
-__global__ void RelativeIndex2DKernel(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, RADIUS, 1, 1, 1, maps::WB_WRAP> in,
+__global__ void RelativeIndex2DKernel(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, RADIUS, 1, 1, 1, maps::WrapBoundaries> in,
                                       maps::StructuredInjectiveSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> out)
 {
     __shared__ typename decltype(in)::SharedData sdata;
@@ -969,7 +926,7 @@ TEST(Window, RelativeIndex2D)
     CUASSERT_NOERR(cudaMemcpy(d_in, &in_val[0], sizeof(float) * TOTAL_SIZE, cudaMemcpyHostToDevice));
 
     // Create structures
-    maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, 1, maps::WB_WRAP> win;
+    maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, 1, maps::WrapBoundaries> win;
     win.m_ptr = d_in;
     win.m_stride = win.m_dimensions[0] = TOTAL_WIDTH;
     win.m_dimensions[1] = TOTAL_HEIGHT;
@@ -1003,7 +960,7 @@ TEST(Window, RelativeIndex2D)
 
 
 template <int BLOCK_WIDTH, int BLOCK_HEIGHT, int RADIUS>
-__global__ void RelativeIndexAligned2DKernel(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, RADIUS, 1, 1, 1, maps::WB_WRAP> in,
+__global__ void RelativeIndexAligned2DKernel(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, RADIUS, 1, 1, 1, maps::WrapBoundaries> in,
                                              maps::StructuredInjectiveSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> out)
 {
     __shared__ typename decltype(in)::SharedData sdata;
@@ -1063,7 +1020,7 @@ TEST(Window, RelativeIndexAligned2D)
     CUASSERT_NOERR(cudaMemcpy(d_in, &in_val[0], sizeof(float) * TOTAL_SIZE, cudaMemcpyHostToDevice));
 
     // Create structures
-    maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, 1, maps::WB_WRAP> win;
+    maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 1, 1, 1, maps::WrapBoundaries> win;
     win.m_ptr = d_in;
     win.m_stride = win.m_dimensions[0] = TOTAL_WIDTH;
     win.m_dimensions[1] = TOTAL_HEIGHT;
@@ -1099,7 +1056,7 @@ TEST(Window, RelativeIndexAligned2D)
 }
 
 template <int BLOCK_WIDTH, int BLOCK_HEIGHT>
-__global__ void NoRadiusSingleGPUKernel(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::WB_ZERO> in,
+__global__ void NoRadiusSingleGPUKernel(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::ZeroBoundaries> in,
                                         maps::StructuredInjectiveSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1> out)
 {
     MAPS_INIT(in, out);
@@ -1118,7 +1075,7 @@ __global__ void NoRadiusSingleGPUKernel(maps::WindowSingleGPU<float, 2, BLOCK_WI
 
 template <int BLOCK_WIDTH, int BLOCK_HEIGHT>
 __global__ void NoRadiusMultiGPUKernel(MAPS_MULTIDEF2,
-                                       maps::Window<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::WB_ZERO> in,
+                                       maps::Window<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::ZeroBoundaries> in,
                                        maps::StructuredInjective2D<float, BLOCK_WIDTH, BLOCK_HEIGHT> out)
 {
     MAPS_MULTI_INITVARS(in, out);
@@ -1167,7 +1124,7 @@ TEST(Window, NoRadiusSingleGPU)
     CUASSERT_NOERR(cudaMemcpy(d_in, &in_val[0], sizeof(float) * TOTAL_SIZE, cudaMemcpyHostToDevice));
 
     // Create structures
-    maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::WB_ZERO> win;
+    maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::ZeroBoundaries> win;
     win.m_ptr = d_in;
     win.m_stride = win.m_dimensions[0] = TOTAL_WIDTH;
     win.m_dimensions[1] = TOTAL_HEIGHT;
@@ -1230,7 +1187,7 @@ TEST(Window, NoRadiusMultiGPU)
     CUASSERT_NOERR(cudaMemcpy(d_in, &in_val[0], sizeof(float) * TOTAL_SIZE, cudaMemcpyHostToDevice));
 
     // Create structures
-    maps::Window<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::WB_ZERO> win;
+    maps::Window<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 0, 1, 1, 1, maps::ZeroBoundaries> win;
     win.m_ptr = d_in;
     win.m_stride = win.m_dimensions[0] = TOTAL_WIDTH;
     win.m_dimensions[1] = TOTAL_HEIGHT;

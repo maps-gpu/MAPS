@@ -50,7 +50,8 @@ GTX 730M    | 2855 us | 967 us | 748 us  |  343 us
 #include <device_launch_parameters.h>
 
 #include <maps/maps.cuh>
-#include <maps/input_containers/internal/io_globalread.cuh>
+#include <maps/input_containers/internal/io_global.cuh>
+#include <maps/input_containers/internal/io_boundaries.cuh>
 #include <maps/input_containers/internal/io_globaltoshared.cuh>
 #include <maps/input_containers/internal/io_globaltoarray.cuh>
 #include <maps/multi/multi.cuh>
@@ -110,8 +111,8 @@ __global__ void conv2Naive(const float *in, size_t inStride,
     out[y * outStride + x] = result;
 }
 
-template<int RADIUS, int BLOCK_WIDTH, int BLOCK_HEIGHT, int TEXTURE_UID = -1, int ILP_X = 1, int ILP_Y = 1>
-__global__ void conv2MAPS(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, RADIUS, ILP_X, ILP_Y, 1, maps::WB_NOCHECKS, TEXTURE_UID> in,
+template<int RADIUS, int BLOCK_WIDTH, int BLOCK_HEIGHT, typename GlobalIOScheme = maps::DistinctIO, int ILP_X = 1, int ILP_Y = 1>
+__global__ void conv2MAPS(maps::WindowSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, RADIUS, ILP_X, ILP_Y, 1, maps::NoBoundaries, GlobalIOScheme> in,
                           maps::StructuredInjectiveSingleGPU<float, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, ILP_X, ILP_Y> out)
 {
     MAPS_INIT(in, out);
@@ -230,7 +231,7 @@ TEST(Performance, Window2D_Convolution)
 
     soout.m_ptr = dev_MAPSTexResult;
 
-    maps::WindowSingleGPU<float, 2, BW, BH, 1, KERNEL_RADIUS, 1, 1, 1, maps::WB_NOCHECKS, IMAGE_TEXTURE_UID> wintex;
+    maps::WindowSingleGPU<float, 2, BW, BH, 1, KERNEL_RADIUS, 1, 1, 1, maps::NoBoundaries, maps::TextureIO<IMAGE_TEXTURE_UID> > wintex;
     wintex.m_ptr = dev_image;
     wintex.m_stride = imageStride / sizeof(float);
     wintex.m_dimensions[0] = width; wintex.m_dimensions[1] = height;
@@ -240,7 +241,7 @@ TEST(Performance, Window2D_Convolution)
 
     for (int i = 0; i < REPETITIONS; i++)
     {
-        conv2MAPS<KERNEL_RADIUS, BW, BH, IMAGE_TEXTURE_UID> <<<grid_dims, block_dims>>>(wintex, soout);
+        conv2MAPS<KERNEL_RADIUS, BW, BH, maps::TextureIO<IMAGE_TEXTURE_UID> > <<<grid_dims, block_dims >>>(wintex, soout);
     }
     
     CUASSERT_NOERR(cudaDeviceSynchronize());
@@ -248,7 +249,7 @@ TEST(Performance, Window2D_Convolution)
 
     CUASSERT_NOERR(cudaMemcpy(&host_resultMAPSTex[0], dev_MAPSTexResult, sizeof(float)* width * height, cudaMemcpyDeviceToHost));
 
-    maps::WindowSingleGPU<float, 2, BWILP, BHILP, 1, KERNEL_RADIUS, IPX, IPY, 1, maps::WB_NOCHECKS, IMAGE_TEXTURE_UID> wintexilp;
+    maps::WindowSingleGPU<float, 2, BWILP, BHILP, 1, KERNEL_RADIUS, IPX, IPY, 1, maps::NoBoundaries, maps::TextureIO<IMAGE_TEXTURE_UID> > wintexilp;
     wintexilp.m_ptr = dev_image;
     wintexilp.m_stride = imageStride / sizeof(float);
     wintexilp.m_dimensions[0] = width; wintexilp.m_dimensions[1] = height;
@@ -263,7 +264,7 @@ TEST(Performance, Window2D_Convolution)
 
     for (int i = 0; i < REPETITIONS; i++)
     {
-        conv2MAPS<KERNEL_RADIUS, BWILP, BHILP, IMAGE_TEXTURE_UID, IPX, IPY> <<<grid_dims_ilp, block_dims_ilp>>>(wintexilp, sooutilp);
+        conv2MAPS<KERNEL_RADIUS, BWILP, BHILP, maps::TextureIO<IMAGE_TEXTURE_UID>, IPX, IPY> <<<grid_dims_ilp, block_dims_ilp>>>(wintexilp, sooutilp);
     }
 
 

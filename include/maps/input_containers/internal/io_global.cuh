@@ -27,8 +27,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef __MAPS_IO_GLOBALREAD_CUH_
-#define __MAPS_IO_GLOBALREAD_CUH_
+#ifndef __MAPS_IO_GLOBAL_CUH_
+#define __MAPS_IO_GLOBAL_CUH_
 
 #include "../../internal/common.cuh"
 #include "../../internal/cuda_utils.hpp"
@@ -40,9 +40,9 @@
 namespace maps
 {
 
-    template <typename T>
-    struct GlobalRead<T, GR_DIRECT, -1>
+    struct DirectIO : public IGlobalIOScheme
     {
+        template <typename T>
         static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
                                                       T& value)
         {
@@ -50,6 +50,7 @@ namespace maps
             return true;
         }
 
+        template <typename T>
         static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
                                                       int stride, int offy, 
                                                       T& value)
@@ -57,11 +58,31 @@ namespace maps
             value = *(ptr + offy * stride + offx);
             return true;
         }
+
+        template <typename T>
+        static __device__ __forceinline__ bool Read3D(const T *ptr, int offx,
+                                                      int stride, int offy,
+                                                      int height, int offz,
+                                                      T& value)
+        {
+            value = *(ptr + offz * height * stride + offy * stride + offx);
+            return true;
+        }
+        
+        template <typename T>
+        static __device__ __forceinline__ void Write(T *ptr, int offset,
+                                                     const T& value)
+        {
+            *(ptr + offset) = value;
+        }
     };
 
-    template <typename T>
-    struct GlobalRead<T, GR_DISTINCT, -1>
+    /**
+     * @note Only use this I/O scheme if one pattern accesses it.
+     */
+    struct DistinctIO : public IGlobalIOScheme
     {
+        template <typename T>
         static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
                                                       T& value)
         {
@@ -73,6 +94,7 @@ namespace maps
             return true;
         }
 
+        template <typename T>
         static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
                                                       int stride, int offy, 
                                                       T& value)
@@ -81,16 +103,38 @@ namespace maps
             value = __ldg(ptr + offy * stride + offx);
 #else
             value = *(ptr + offy * stride + offx);
-#endif            
+#endif
             return true;
+        }
+
+        template <typename T>
+        static __device__ __forceinline__ bool Read3D(const T *ptr, int offx,
+                                                      int stride, int offy,
+                                                      int height, int offz,
+                                                      T& value)
+        {
+#if __CUDA_ARCH__ >= 320
+            value = __ldg(ptr + offz * height * stride + offy * stride + offx);
+#else
+            value = *(ptr + offz * height * stride + offy * stride + offx);
+#endif
+            return true;
+        }
+
+        template <typename T>
+        static __device__ __forceinline__ void Write(T *ptr, int offset,
+                                                     const T& value)
+        {
+            *(ptr + offset) = value;
         }
     };
 
-    template <typename T, int TEXTURE_UID>
-    struct GlobalRead<T, GR_TEXTURE, TEXTURE_UID>
+    template <int TEXTURE_UID>
+    struct TextureIO : public IGlobalIOScheme
     {
         MAPS_STATIC_ASSERT(TEXTURE_UID >= 0, "Texture UID cannot be negative");
 
+        template <typename T>
         static __device__ __forceinline__ bool Read1D(const T *ptr, int offset,
                                                       T& value)
         {
@@ -100,6 +144,7 @@ namespace maps
             return true;
         }
 
+        template <typename T>
         static __device__ __forceinline__ bool Read2D(const T *ptr, int offx, 
                                                       int stride, int offy, 
                                                       T& value)
@@ -109,8 +154,31 @@ namespace maps
             value = TexId::read(offx + 0.5f, offy + 0.5f);
             return true;
         }
+
+        template <typename T>
+        static __device__ __forceinline__ bool Read3D(const T *ptr, int offx,
+                                                      int stride, int offy,
+                                                      int height, int offz,
+                                                      T& value)
+        {
+            // TODO: Implement (surfaces?)
+            /*
+            typedef typename UniqueTexRef3D<T>::template TexId<TEXTURE_UID>
+                TexId;
+            value = TexId::read(offx + 0.5f, offy + 0.5f, offz + 0.5f);
+            */
+            value = *(ptr + offz * height * stride + offy * stride + offx);
+            return true;
+        }
+
+        template <typename T>
+        static __device__ __forceinline__ void Write(T *ptr, int offset,
+                                                     const T& value)
+        {
+            *(ptr + offset) = value;
+        }
     };
 
 }  // namespace maps
 
-#endif  // __MAPS_IO_GLOBALREAD_CUH_
+#endif  // __MAPS_IO_GLOBAL_CUH_

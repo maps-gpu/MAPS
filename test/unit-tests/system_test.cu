@@ -32,7 +32,7 @@
 #include <gtest/gtest.h>
 
 #include <maps/input_containers/internal/io_common.cuh>
-#include <maps/input_containers/internal/io_globalread.cuh>
+#include <maps/input_containers/internal/io_global.cuh>
 #include <maps/input_containers/internal/io_globaltoshared.cuh>
 #include <maps/input_containers/internal/io_globaltoarray.cuh>
 #include <maps/input_containers/window.cuh>

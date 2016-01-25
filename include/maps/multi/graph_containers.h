@@ -112,7 +112,6 @@ namespace maps
 
                             // Prepare the main data segment:
                             DatumSegment dataseg(1);
-                            dataseg.m_borders = WB_NOCHECKS;
 
                             dataseg.m_offset[0] = 
                                 (int64_t)xoff_begin * 
@@ -217,7 +216,6 @@ namespace maps
 
                             // Prepare the main data segment:
                             DatumSegment dataseg(1);
-                            dataseg.m_borders = WB_NOCHECKS;
 
                             dataseg.m_offset[0] = (int64_t) begin;
                             dataseg.m_dimensions[0] = (int64_t)(end - begin);

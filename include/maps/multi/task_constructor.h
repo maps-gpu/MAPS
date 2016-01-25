@@ -68,32 +68,36 @@ namespace maps
         // INPUT CONTAINERS        
 
         template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int WINDOW_APRON,
-                 BorderBehavior BORDER, int ITEMS_PER_THREAD, int ROWS_PER_THREAD>
-        inline void ConstructArgs(Task& task, const Window2D<T, BLOCK_WIDTH, BLOCK_HEIGHT, WINDOW_APRON, BORDER, ITEMS_PER_THREAD, ROWS_PER_THREAD>& arg)
+                 typename BoundaryConditions, int ITEMS_PER_THREAD, int ROWS_PER_THREAD>
+        inline void ConstructArgs(Task& task, const Window2D<T, BLOCK_WIDTH, BLOCK_HEIGHT, WINDOW_APRON, BoundaryConditions, ITEMS_PER_THREAD, ROWS_PER_THREAD>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(), 
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
         template<typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, int WINDOW_APRON, int IPX, int IPY, int IPZ,
-                 BorderBehavior BORDER>
-        inline void ConstructArgs(Task& task, const Window<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, WINDOW_APRON, IPX, IPY, IPZ, BORDER>& arg)
+                 typename BoundaryConditions>
+        inline void ConstructArgs(Task& task, const Window<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, WINDOW_APRON, IPX, IPY, IPZ, BoundaryConditions>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
-        template<typename T, int WINDOW_APRON, BorderBehavior BORDER>
-        inline void ConstructArgs(Task& task, const Window2DUnmodified<T, WINDOW_APRON, BORDER>& arg)
+        template<typename T, int WINDOW_APRON, typename BoundaryConditions>
+        inline void ConstructArgs(Task& task, const Window2DUnmodified<T, WINDOW_APRON, BoundaryConditions>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
-        template<typename T, int WINDOW_APRON, BorderBehavior BORDER>
-        inline void ConstructArgs(Task& task, const Window4DUnmodified<T, WINDOW_APRON, BORDER>& arg)
+        template<typename T, int WINDOW_APRON, typename BoundaryConditions>
+        inline void ConstructArgs(Task& task, const Window4DUnmodified<T, WINDOW_APRON, BoundaryConditions>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 
@@ -105,10 +109,11 @@ namespace maps
         }
 
         template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX, int IPY, int IPZ,
-                 BorderBehavior BORDER>
-            inline void ConstructArgs(Task& task, const Block<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, BORDER>& arg)
+                 typename BoundaryConditions>
+            inline void ConstructArgs(Task& task, const Block<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, BoundaryConditions>& arg)
         {
-            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory()));
+            task.inputs.push_back(TaskInput(arg.datum, arg.CreateSegmenter(), arg.CreateContainerFactory(),
+                                            std::shared_ptr<::maps::IBoundaryConditions>(new BoundaryConditions())));
             task.argument_ordering.push_back(AT_INPUT);
         }
 

@@ -86,7 +86,6 @@ namespace maps
                         std::vector<DatumSegment> datasegs (1);
 
                         DatumSegment dataseg(DIMS);
-                        dataseg.m_borders = WB_NOCHECKS;
 
                         if (seg.blocks == 0)
                         {
@@ -300,7 +299,6 @@ namespace maps
                         std::vector<DatumSegment> datasegs (1);
 
                         DatumSegment dataseg(1);
-                        dataseg.m_borders = WB_NOCHECKS;
 
                         dataseg.m_offset[0] = 0;
                         dataseg.m_dimensions[0] = datum->GetDataDimension(0);

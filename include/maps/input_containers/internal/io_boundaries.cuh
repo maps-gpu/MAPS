@@ -202,9 +202,9 @@ namespace maps
                                                       T& value)
         {
             return GlobalIOScheme::Read3D<T>(ptr,
-                                             Wrap(offx, 0, width - 1),
-                                             stride, Wrap(offy, 0, height - 1),
-                                             height, Wrap(offz, 0, depth - 1),
+                                             Wrap(offx, width),
+                                             stride, Wrap(offy, height),
+                                             height, Wrap(offz, depth),
                                              value);
         }
     };

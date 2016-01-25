@@ -539,7 +539,8 @@ namespace maps {
                     seg.m_bFill = true;
                     seg.m_fillValue = value;
 
-                    CopyFromHost(i, datum, allocated_segment, seg, m_streams[i]);
+                    NoBoundaries bound;
+                    CopyFromHost(i, datum, allocated_segment, seg, bound, m_streams[i]);
 
                     loc.entries.push_back(std::make_pair(i, allocated_segment));                    
                 }
@@ -560,7 +561,7 @@ namespace maps {
             }
 
             virtual bool CopyFromHost(int dstDevice, IDatum *datum, const DatumSegment& allocated_seg,
-                                      const DatumSegment& seg, cudaStream_t stream)
+                                      const DatumSegment& seg, const IBoundaryConditions& bound, cudaStream_t stream)
             {
 #ifndef NDEBUG
                 if (!datum)
@@ -593,7 +594,7 @@ namespace maps {
                 void *dst_ptr = mem_dst.ptr;
 
                 // Compute real offset
-                src_ptr = seg.OffsetPtrBounds(src_ptr, datum, datum->GetElementSize(), datum->GetHostStrideBytes());
+                src_ptr = seg.OffsetPtrBounds(src_ptr, datum, bound, datum->GetElementSize(), datum->GetHostStrideBytes());
                 dst_ptr = allocated_seg.OffsetPtr(seg.m_offset, dst_ptr, datum->GetElementSize(), mem_dst.stride_bytes);
 
                 size_t otherdims = 1;
@@ -629,7 +630,8 @@ namespace maps {
             }
 
             virtual bool CopyToHost(int srcDevice, IDatum *datum, const DatumSegment& allocated_seg,
-                                    const DatumSegment& seg, cudaStream_t stream, bool async = true, const DatumSegment& host_allocated_seg = DatumSegment())
+                                    const DatumSegment& seg, const IBoundaryConditions& bound,
+                                    cudaStream_t stream, bool async = true, const DatumSegment& host_allocated_seg = DatumSegment())
             {
                 bool result = true;
 
@@ -673,7 +675,7 @@ namespace maps {
                 if (host_allocated_seg.GetDimensions() > 0)
                     dst_ptr = host_allocated_seg.OffsetPtr(seg.m_offset, dst_ptr, datum->GetElementSize(), datum->GetHostStrideBytes());
                 else
-                    dst_ptr = seg.OffsetPtrBounds(dst_ptr, datum, datum->GetElementSize(), datum->GetHostStrideBytes());
+                    dst_ptr = seg.OffsetPtrBounds(dst_ptr, datum, bound, datum->GetElementSize(), datum->GetHostStrideBytes());
 
                 size_t otherdims = 1;
                 for (unsigned int i = 1; i < seg.GetDimensions(); ++i)
@@ -1242,7 +1244,7 @@ namespace maps {
                                             // Copy from host to device
                                             for (const DatumSegment& segment : dirty_segments)
                                             {
-                                                if (!CopyFromHost(i, datum, allocated_segment, segment, m_streams[i]))
+                                                if (!CopyFromHost(i, datum, allocated_segment, segment, *input.boundary_conditions, m_streams[i]))
                                                     return (taskHandle_t)0;
                                                 m_upToDateLocations[i][datum].push_back(segment);
                                             }
@@ -1304,10 +1306,11 @@ namespace maps {
 
                                                     // If the entry intersects with our required segment, compute intersection
                                                     // and copy each of the overlapping segments
-                                                    if (IntersectsWith(segment, entry.second, segment.m_borders, datum))
+                                                    if (IntersectsWith(segment, entry.second, *input.boundary_conditions, datum))
                                                     {
-                                                        Intersection(entry.second, segment, datum, intersection_src,
-                                                                     intersection_dst);
+                                                        Intersection(entry.second, segment, datum, 
+                                                                     *input.boundary_conditions, *input.boundary_conditions,
+                                                                     intersection_src, intersection_dst);
 
                                                         deviceSegmentCopies[entry.first].
                                                             push_back(std::make_tuple(datum, intersection_src, intersection_dst));
@@ -1590,6 +1593,7 @@ namespace maps {
                     return false;
                 }
 #endif
+                NoBoundaries bound;
 
                 // Act according to the last location state of the data
                 switch (loc.state)
@@ -1614,7 +1618,7 @@ namespace maps {
 
                         // Copy from the first device
                         CopyToHost(entry.first, datum, allocated_segment,
-                                   entry.second, m_streams[entry.first], async);
+                                   entry.second, bound, m_streams[entry.first], async);
                     }
                     break;
 
@@ -1640,7 +1644,7 @@ namespace maps {
                                 MAPS_CUDA_CHECK(cudaEventCreate(&events[i]));
 
                             CopyToHost(entry.first, datum, allocated_segment,
-                                       entry.second, m_streams[entry.first], true);
+                                       entry.second, bound, m_streams[entry.first], true);
 
                             if (!async)
                                 MAPS_CUDA_CHECK(cudaEventRecord(events[i], m_streams[entry.first]));
@@ -1699,7 +1703,7 @@ namespace maps {
                             }
 
                             CopyToHost(entry.first, datum, allocated_segment,
-                                       entry.second, m_streams[entry.first], false);
+                                       entry.second, bound, m_streams[entry.first], false);
 
                             m_aggregators[datum]->AggregateToHost(datum, datum->HostPtr(), datum->GetHostStrideBytes(),
                                                                   &temp_buffer[0]);

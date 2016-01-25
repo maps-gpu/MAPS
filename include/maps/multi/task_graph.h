@@ -211,7 +211,7 @@ namespace maps
             }
 
             virtual bool CopyFromHost(int dstDevice, IDatum *datum, const DatumSegment& allocated_seg,
-                                      const DatumSegment& seg, cudaStream_t stream) override
+                                      const DatumSegment& seg, const IBoundaryConditions& bound, cudaStream_t stream) override
             {
                 if (m_bFinalized)
                 {
@@ -249,7 +249,7 @@ namespace maps
                 void *dst_ptr = mem_dst.ptr;
 
                 // Compute real offset
-                src_ptr = seg.OffsetPtrBounds(src_ptr, datum, datum->GetElementSize(), datum->GetHostStrideBytes());
+                src_ptr = seg.OffsetPtrBounds(src_ptr, datum, bound, datum->GetElementSize(), datum->GetHostStrideBytes());
                 dst_ptr = allocated_seg.OffsetPtr(seg.m_offset, dst_ptr, datum->GetElementSize(), mem_dst.stride_bytes);
 
                 size_t otherdims = 1;
@@ -295,7 +295,8 @@ namespace maps
 
 
             virtual bool EnqueueCopyToHost(int srcDevice, IDatum *datum, const DatumSegment& allocated_seg,
-                                           const DatumSegment& seg, cudaStream_t stream, bool async = true)
+                                           const DatumSegment& seg, const IBoundaryConditions& bound, 
+                                           cudaStream_t stream, bool async = true)
             {
                 if (m_bFinalized)
                 {
@@ -334,7 +335,7 @@ namespace maps
 
                 // Compute real offset                
                 src_ptr = allocated_seg.OffsetPtr(seg.m_offset, src_ptr, datum->GetElementSize(), mem_src.stride_bytes);
-                dst_ptr = seg.OffsetPtrBounds(dst_ptr, datum, datum->GetElementSize(), datum->GetHostStrideBytes());
+                dst_ptr = seg.OffsetPtrBounds(dst_ptr, datum, bound, datum->GetElementSize(), datum->GetHostStrideBytes());
 
                 size_t otherdims = 1;
                 for (unsigned int i = 1; i < seg.GetDimensions(); ++i)
@@ -759,6 +760,7 @@ namespace maps
                     return false;
                 }
 #endif
+                NoBoundaries bound;
 
                 // Act according to the last location state of the data
                 switch (loc.state)
@@ -783,7 +785,7 @@ namespace maps
 
                     // Copy from the first device
                     EnqueueCopyToHost(entry.first, datum, allocated_segment,
-                                      entry.second, this->m_streams[entry.first]);
+                                      entry.second, bound, this->m_streams[entry.first]);
                 }
                 return true;
 
@@ -804,7 +806,7 @@ namespace maps
                         }
 
                         EnqueueCopyToHost(srcDev, datum, allocated_segment,
-                                          loc.entries[i].second, this->m_streams[srcDev]);
+                                          loc.entries[i].second, bound, this->m_streams[srcDev]);
                     }
                 }
                 return true;

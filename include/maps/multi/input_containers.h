@@ -51,11 +51,11 @@ namespace maps
     namespace multi
     {
         template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int WINDOW_APRON,
-                  BorderBehavior BORDER = WB_ZERO, int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1>
+                  typename BoundaryConditions = ZeroBoundaries, int ITEMS_PER_THREAD = 1, int ROWS_PER_THREAD = 1>
         class Window2D
         {
         public:
-            MAPS_STATIC_ASSERT(BORDER != WB_NOCHECKS, "No boundary checking is not supported in multi-GPU mode");
+            MAPS_STATIC_ASSERT(!(std::is_same<BoundaryConditions, NoBoundaries>::value), "No boundary checking is not supported in multi-GPU mode");
 
             IDatum *datum;
 
@@ -98,7 +98,6 @@ namespace maps
 
                         // Prepare the main data segment, the tile contains the two (top, bottom) aprons as boundary conditions
                         DatumSegment dataseg(2);
-                        dataseg.m_borders = BORDER;
                         dataseg.m_offset[0] = 0;
                         dataseg.m_offset[1] = (int64_t)yoff_begin * BLOCK_HEIGHT * ROWS_PER_THREAD - WINDOW_APRON;
                         dataseg.m_dimensions[0] = ITEMS_PER_THREAD * BLOCK_WIDTH * seg.total_grid_dims.x;
@@ -170,7 +169,7 @@ namespace maps
                         }
 
                         // Determine what to do with the border segment, if exists
-                        if (borderseg.GetDimensions() > 0 && BORDER == WB_ZERO)
+                        if (borderseg.GetDimensions() > 0 && std::is_same<BoundaryConditions, ZeroBoundaries>::value)
                         {
                             borderseg.m_bFill = true;
                             borderseg.m_fillValue = 0;
@@ -198,7 +197,7 @@ namespace maps
                         return nullptr;
                     }
 #endif
-                    typedef ::maps::Window<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, WINDOW_APRON, ITEMS_PER_THREAD, ROWS_PER_THREAD, 1, BORDER, -1, ::maps::GR_DISTINCT> ContainerType;
+                    typedef ::maps::Window<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, WINDOW_APRON, ITEMS_PER_THREAD, ROWS_PER_THREAD, 1, BoundaryConditions, ::maps::DistinctIO> ContainerType;
                     ContainerType *cont = new ContainerType();
                     cont->m_ptr = (T *)buff.ptr;
                     cont->m_stride = (int)(buff.stride_bytes / datum->GetElementSize());
@@ -220,11 +219,11 @@ namespace maps
 
         };
 
-        template <typename T, int WINDOW_APRON, BorderBehavior BORDER = WB_ZERO>
+        template <typename T, int WINDOW_APRON, typename BoundaryConditions = ZeroBoundaries>
         class Window2DUnmodified
         {
         public:
-            MAPS_STATIC_ASSERT(BORDER != WB_NOCHECKS, "No boundary checking is not supported in multi-GPU mode");
+            MAPS_STATIC_ASSERT(!(std::is_same<BoundaryConditions, NoBoundaries>::value), "No boundary checking is not supported in multi-GPU mode");
 
             Matrix<T> *datum;
 
@@ -255,7 +254,6 @@ namespace maps
 
                         // Prepare the main data segment, the tile contains the two (top, bottom) aprons as boundary conditions
                         DatumSegment dataseg(2);
-                        dataseg.m_borders = BORDER;
                         dataseg.m_offset[0] = 0;
                         dataseg.m_offset[1] = (int64_t)yoff_begin * 1 - WINDOW_APRON;
                         dataseg.m_dimensions[0] = 1 * seg.total_grid_dims.x;
@@ -299,7 +297,7 @@ namespace maps
                         }
 
                         // Determine what to do with the border segment, if exists
-                        if (borderseg.GetDimensions() > 0 && BORDER == WB_ZERO)
+                        if (borderseg.GetDimensions() > 0 && std::is_same<BoundaryConditions, ZeroBoundaries>::value)
                         {
                             borderseg.m_bFill = true;
                             borderseg.m_fillValue = 0;
@@ -334,11 +332,11 @@ namespace maps
         // WINDOW 4D
         //////////////////////////////////////////////////////////////////////////////////////////////
 
-        template <typename T, int WINDOW_APRON, BorderBehavior BORDER = WB_ZERO>
+        template <typename T, int WINDOW_APRON, typename BoundaryConditions = ZeroBoundaries>
         class Window4DUnmodified
         {
         public:
-            MAPS_STATIC_ASSERT(BORDER != WB_NOCHECKS, "No boundary checking is not supported in multi-GPU mode");
+            MAPS_STATIC_ASSERT(!(std::is_same<BoundaryConditions, NoBoundaries>::value), "No boundary checking is not supported in multi-GPU mode");
 
             Datum<T, 4> *datum;
 
@@ -376,7 +374,6 @@ namespace maps
 
                         // Prepare the main data segment, the tile contains the two (top, bottom) aprons as boundary conditions
                         DatumSegment dataseg(4);
-                        dataseg.m_borders = BORDER;
                         dataseg.m_offset[0] = 0;
                         dataseg.m_offset[1] = 0;
                         dataseg.m_offset[2] = 0;
@@ -422,7 +419,7 @@ namespace maps
                         }
 
                         // Determine what to do with the border segment, if exists
-                        if (borderseg.GetDimensions() > 0 && BORDER == WB_ZERO)
+                        if (borderseg.GetDimensions() > 0 && std::is_same<BoundaryConditions, ZeroBoundaries>::value)
                         {
                             borderseg.m_bFill = true;
                             borderseg.m_fillValue = 0;
@@ -459,7 +456,7 @@ namespace maps
         /////////////////////////////////////////////////////////////////////////////////////////////
 
         template <typename T, int DIMS, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, int WINDOW_APRON, int IPX = 1, int IPY = 1, int IPZ = 1,
-                  ::maps::BorderBehavior BORDER = ::maps::WB_ZERO>
+                  typename BoundaryConditions = ZeroBoundaries>
         class Window
         {
         public:
@@ -527,8 +524,7 @@ namespace maps
                                                 
                         // Prepare the main data segment:
                         DatumSegment dataseg(DIMS);
-                        dataseg.m_borders = BORDER;
-
+                        
                         // Prepare appropriate block
                         for (int d = 0; d < DIMS - 1; ++d)
                         {
@@ -585,7 +581,7 @@ namespace maps
                         }
 
                         // Determine what to do with the border segment, if exists
-                        if (borderseg.GetDimensions() > 0 && BORDER == WB_ZERO)
+                        if (borderseg.GetDimensions() > 0 && std::is_same<BoundaryConditions, ZeroBoundaries>::value)
                         {
                             borderseg.m_bFill = true;
                             borderseg.m_fillValue = 0;
@@ -613,7 +609,7 @@ namespace maps
                         return nullptr;
                     }
 #endif
-                    typedef ::maps::Window<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, WINDOW_APRON, IPX, IPY, IPZ, BORDER, -1, ::maps::GR_DISTINCT> ContainerType;
+                    typedef ::maps::Window<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, WINDOW_APRON, IPX, IPY, IPZ, BoundaryConditions, ::maps::DistinctIO> ContainerType;
                     ContainerType *cont = new ContainerType();
                     cont->m_ptr = (T *)buff.ptr;
                     cont->m_stride = (int)(buff.stride_bytes / datum->GetElementSize());
@@ -640,7 +636,7 @@ namespace maps
         /////////////////////////////////////////////////////////////////////////////////////////////
 
         template <typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX = 1, int IPY = 1, int IPZ = 1,
-                  ::maps::BorderBehavior BORDER = ::maps::WB_ZERO>
+                  typename BoundaryConditions = ZeroBoundaries>
         class Block
         {
         public:
@@ -692,7 +688,6 @@ namespace maps
 
                         // Prepare the main data segment:
                         DatumSegment dataseg(DIMS);
-                        dataseg.m_borders = BORDER;
 
                         // Last dimension, use entire datum
                         if (PRINCIPAL_DIM == (DIMS - 1))
@@ -741,8 +736,8 @@ namespace maps
                         return nullptr;
                     }
 #endif
-                    typedef ::maps::Block<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, 
-                                          BORDER, -1, ::maps::GR_DISTINCT> ContainerType;
+                    typedef ::maps::Block<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ,
+                                          BoundaryConditions> ContainerType;
                     ContainerType *cont = new ContainerType();
                     cont->m_ptr = (T *)buff.ptr;
                     cont->m_stride = buff.stride_bytes / datum->GetElementSize();
@@ -762,17 +757,17 @@ namespace maps
         };
 
         // Template aliases for ease of use
-        template <typename T, int BLOCK_WIDTH, int IPX = 1, BorderBehavior BORDER = ::maps::WB_ZERO, int BLOCK_HEIGHT = 1, 
+        template <typename T, int BLOCK_WIDTH, int IPX = 1, typename BoundaryConditions = ZeroBoundaries, int BLOCK_HEIGHT = 1,
                   int BLOCK_DEPTH = 1>
-        using Block1D = Block<T, 1, 0, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 1, 1, BORDER>;
+        using Block1D = Block<T, 1, 0, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 1, 1, BoundaryConditions>;
 
-        template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, BorderBehavior BORDER = ::maps::WB_ZERO,
+        template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, typename BoundaryConditions = ZeroBoundaries,
                   int BLOCK_DEPTH = 1>
-        using Block2D = Block<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, BORDER>;
+        using Block2D = Block<T, 2, 0, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, BoundaryConditions>;
 
-        template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, BorderBehavior BORDER = ::maps::WB_ZERO,
+        template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, typename BoundaryConditions = ZeroBoundaries,
                   int BLOCK_DEPTH = 1>
-        using Block2DTransposed = Block<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, BORDER>;
+        using Block2DTransposed = Block<T, 2, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, BoundaryConditions>;
         
 
         //////////////////////////////////////////////////////////////////////////////////////////////
@@ -811,8 +806,7 @@ namespace maps
                         // Prepare the main data segment:
                         // Needs the entire block (1D vector)
                         DatumSegment dataseg(1);
-                        dataseg.m_borders = WB_ZERO;
-                        
+                       
                         dataseg.m_offset[0] = 0;
                         dataseg.m_dimensions[0] = datum->GetDataDimension(0);
                         
@@ -880,7 +874,6 @@ namespace maps
                         // Transposed gets the whole matrix
                         // Normal gets only the necessary lines
                         DatumSegment dataseg(2);
-                        dataseg.m_borders = WB_ZERO;
                         if (TRANSPOSED)
                         {
                             dataseg.m_offset[0] = 0;
@@ -970,7 +963,6 @@ namespace maps
                         // Transposed gets the whole matrix
                         // Normal gets only the necessary lines
                         DatumSegment dataseg(4);
-                        dataseg.m_borders = WB_ZERO;
                         if (TRANSPOSED)
                         {
                             dataseg.m_offset[0] = 0;
@@ -1069,7 +1061,6 @@ namespace maps
 
                         // Prepare the main data segment:
                         DatumSegment dataseg(4);
-                        dataseg.m_borders = WB_ZERO;
                         dataseg.m_offset[0] = 0;
                         dataseg.m_offset[1] = 0;
                         dataseg.m_offset[2] = 0;
@@ -1151,7 +1142,6 @@ namespace maps
 
                         // Prepare the main data segment:
                         DatumSegment dataseg(DIMS);
-                        dataseg.m_borders = WB_NOCHECKS;
                     
                         // Prepare entire buffer
                         for (int d = 0; d < DIMS; ++d)

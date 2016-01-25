@@ -36,7 +36,7 @@
 
 namespace maps
 {
-    template <typename TWeight, typename TValue>
+    template <typename TWeight, typename TValue, typename GlobalIOScheme = DistinctIO>
     class Adjacency : public IContainerComposition
     {
     public:
@@ -145,11 +145,11 @@ namespace maps
               {
 
                   int gmemIndex;
-                  GlobalRead<int, GR_DISTINCT>::Read1D(
+                  GlobalIOScheme::Read1D<int>(
                       (int *)m_blockEdgesIndexList.GetTypedPtr(),  
                       -m_blockEdgesIndexList.GetOffset() + 
                       numOfItemsForBlock.y + loadIndex, gmemIndex);
-                  GlobalRead<TValue, GR_DISTINCT>::Read1D(
+                  GlobalIOScheme::Read1D<TValue>(
                       m_nodesValueList, gmemIndex, m_sdata[loadIndex]);
 
                   loadIndex += blockDim.x;
@@ -202,8 +202,7 @@ namespace maps
 
                 // Load shared memory index from the preprocessed global memory
                 int smemIndex;
-                GlobalRead<int, GR_DISTINCT>::Read1D(
-                    m_nodeNodesSMemIndexList, m_gmemIndex, smemIndex);
+                GlobalIOScheme::Read1D<int>(m_nodeNodesSMemIndexList, m_gmemIndex, smemIndex);
 
                 // Load the adjacent node value from smem
                 edgeData.adjacent_node_value = m_sdata[smemIndex];

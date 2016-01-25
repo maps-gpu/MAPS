@@ -32,126 +32,127 @@
 
 #include "../internal/common.h"
 #include "internal/io_common.cuh"
+#include "internal/io_boundaries.cuh"
+#include "internal/io_global.cuh"
 
 namespace maps
 {
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX = 1, int IPY = 1, 
-             int IPZ = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
+             int IPZ = 1, typename BorderBehavior = NoBoundaries, 
              int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT,
-             int CHUNKZ = BLOCK_DEPTH, int TEXTURE_UID = -1, 
-             GlobalReadScheme GRS = GR_DISTINCT, bool MULTI_GPU = true>
+             int CHUNKZ = BLOCK_DEPTH, typename GlobalIOScheme = DistinctIO, 
+             bool MULTI_GPU = true>
     class Block;
 
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX = 1, int IPY = 1, 
-             int IPZ = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
+             int IPZ = 1, typename BorderBehavior = NoBoundaries,
              int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT,
-             int CHUNKZ = BLOCK_DEPTH, int TEXTURE_UID = -1, 
-             GlobalReadScheme GRS = GR_DISTINCT>
+             int CHUNKZ = BLOCK_DEPTH, typename GlobalIOScheme = DistinctIO>
     using BlockSingleGPU = Block<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, 
                                  BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, 
-                                 BORDERS, CHUNKX, CHUNKY, CHUNKZ,
-                                 TEXTURE_UID, GRS, false>;
+                                 BorderBehavior, CHUNKX, CHUNKY, CHUNKZ,
+                                 GlobalIOScheme, false>;
 
     // Type aliases
 
     template<typename T, int BLOCK_WIDTH, int IPX = 1, int BLOCK_HEIGHT = 1, 
-             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
-             int CHUNKX = BLOCK_WIDTH, int TEXTURE_UID = -1, 
-             GlobalReadScheme GRS = GR_DISTINCT, bool MULTI_GPU = true>
+             int BLOCK_DEPTH = 1, typename BorderBehavior = NoBoundaries,
+             int CHUNKX = BLOCK_WIDTH, 
+             typename GlobalIOScheme = DistinctIO, bool MULTI_GPU = true>
     using Block1D = Block<T, 1, 0, BLOCK_WIDTH, 
                           BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 1, 1, 
-                          BORDERS, CHUNKX, 1, 1,
-                          TEXTURE_UID, GRS, MULTI_GPU>;
+                          BorderBehavior, CHUNKX, 1, 1,
+                          GlobalIOScheme, MULTI_GPU>;
 
 
     template<typename T, int BLOCK_WIDTH, int IPX = 1, int BLOCK_HEIGHT = 1,
-             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS, 
-             int CHUNKX = BLOCK_WIDTH, int TEXTURE_UID = -1, 
-             GlobalReadScheme GRS = GR_DISTINCT>
+             int BLOCK_DEPTH = 1, typename BorderBehavior = NoBoundaries, 
+             int CHUNKX = BLOCK_WIDTH, 
+             typename GlobalIOScheme = DistinctIO>
     using Block1DSingleGPU = Block<T, 1, 0, BLOCK_WIDTH, 
                                    BLOCK_HEIGHT, BLOCK_DEPTH, IPX, 1, 1, 
-                                   BORDERS, CHUNKX, 1, 1,
-                                   TEXTURE_UID, GRS, false>;
+                                   BorderBehavior, CHUNKX, 1, 1,
+                                   GlobalIOScheme, false>;
 
     template<typename T, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, 
-             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS,
+             int BLOCK_DEPTH = 1, typename BorderBehavior = NoBoundaries, 
              int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT,
+             typename GlobalIOScheme = DistinctIO,
              bool MULTI_GPU = true>
     using Block2D = Block<T, 2, PRINCIPAL_DIM, BLOCK_WIDTH, 
                           BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
-                          BORDERS, CHUNKX, CHUNKY, 1,
-                          TEXTURE_UID, GRS, MULTI_GPU>;
+                          BorderBehavior, CHUNKX, CHUNKY, 1,
+                          GlobalIOScheme, MULTI_GPU>;
 
     template<typename T, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int IPX = 1, int IPY = 1, 
-             int BLOCK_DEPTH = 1, BorderBehavior BORDERS = WB_NOCHECKS,
+             int BLOCK_DEPTH = 1, typename BorderBehavior = NoBoundaries, 
              int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+             typename GlobalIOScheme = DistinctIO>
     using Block2DSingleGPU = Block<T, 2, PRINCIPAL_DIM, BLOCK_WIDTH, 
                                    BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
-                                   BORDERS, CHUNKX, CHUNKY, 1,
-                                   TEXTURE_UID, GRS, false>;
+                                   BorderBehavior, CHUNKX, CHUNKY, 1,
+                                   GlobalIOScheme, false>;
 
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
              int IPY = 1, int BLOCK_DEPTH = 1, 
-             BorderBehavior BORDERS = WB_NOCHECKS,
+             typename BorderBehavior = NoBoundaries, 
              int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT,
+             typename GlobalIOScheme = DistinctIO,
              bool MULTI_GPU = true>
     using Block2DX = Block<T, 2, 0, BLOCK_WIDTH, 
                            BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
-                           BORDERS, CHUNKX, CHUNKY, 1,
-                           TEXTURE_UID, GRS, MULTI_GPU>;
+                           BorderBehavior, CHUNKX, CHUNKY, 1,
+                           GlobalIOScheme, MULTI_GPU>;
 
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
              int IPY = 1, int BLOCK_DEPTH = 1, 
-             BorderBehavior BORDERS = WB_NOCHECKS,
+             typename BorderBehavior = NoBoundaries, 
              int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+             typename GlobalIOScheme = DistinctIO>
     using Block2DXSingleGPU = Block<T, 2, 0, BLOCK_WIDTH, 
                                    BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
-                                   BORDERS, CHUNKX, CHUNKY, 1,
-                                   TEXTURE_UID, GRS, false>;
+                                   BorderBehavior, CHUNKX, CHUNKY, 1,
+                                   GlobalIOScheme, false>;
 
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
              int IPY = 1, int BLOCK_DEPTH = 1, 
-             BorderBehavior BORDERS = WB_NOCHECKS,
+             typename BorderBehavior = NoBoundaries, 
              int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT,
+             typename GlobalIOScheme = DistinctIO,
              bool MULTI_GPU = true>
     using Block2DY = Block<T, 2, 1, BLOCK_WIDTH, 
                            BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
-                           BORDERS, CHUNKX, CHUNKY, 1,
-                           TEXTURE_UID, GRS, MULTI_GPU>;
+                           BorderBehavior, CHUNKX, CHUNKY, 1,
+                           GlobalIOScheme, MULTI_GPU>;
 
     template<typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int IPX = 1, 
              int IPY = 1, int BLOCK_DEPTH = 1, 
-             BorderBehavior BORDERS = WB_NOCHECKS,
+             typename BorderBehavior = NoBoundaries, 
              int CHUNKX = BLOCK_WIDTH, int CHUNKY = BLOCK_HEIGHT, 
-             int TEXTURE_UID = -1, GlobalReadScheme GRS = GR_DISTINCT>
+             typename GlobalIOScheme = DistinctIO>
     using Block2DYSingleGPU = Block<T, 2, 1, BLOCK_WIDTH, 
                                    BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, 1, 
-                                   BORDERS, CHUNKX, CHUNKY, 1,
-                                   TEXTURE_UID, GRS, false>;
+                                   BorderBehavior, CHUNKX, CHUNKY, 1,
+                                   GlobalIOScheme, false>;
 
     /////////////////
 
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX, int IPY, int IPZ, 
              int CHUNKX, int CHUNKY, int CHUNKZ, int XSTRIDE,
-             BorderBehavior BORDERS, int TEXTURE_UID, GlobalReadScheme GRS, 
+             typename BorderBehavior, typename GlobalIOScheme, 
              bool MULTI_GPU>
     class BlockIterator;
 
     
     template<typename T, int DIMS, int PRINCIPAL_DIM, int BLOCK_WIDTH, 
              int BLOCK_HEIGHT, int BLOCK_DEPTH, int IPX, int IPY, int IPZ, 
-             BorderBehavior BORDERS, int CHUNKX, int CHUNKY, int CHUNKZ,
-             int TEXTURE_UID, GlobalReadScheme GRS, bool MULTI_GPU>
+             typename BorderBehavior, int CHUNKX, int CHUNKY, int CHUNKZ,
+             typename GlobalIOScheme, bool MULTI_GPU>
     class Block : public IInputContainer
     {
         MAPS_STATIC_ASSERT((DIMS >= 1 && DIMS <= 2), 
@@ -226,16 +227,16 @@ namespace maps
         typedef BlockIterator<T, DIMS, PRINCIPAL_DIM, BLOCK_WIDTH, 
                               BLOCK_HEIGHT, BLOCK_DEPTH, IPX, IPY, IPZ, 
                               CHUNKX, CHUNKY, CHUNKZ, SHARED_STRIDE,
-                              BORDERS, TEXTURE_UID, GRS, MULTI_GPU> iterator;
+                              BorderBehavior, GlobalIOScheme, MULTI_GPU> iterator;
         typedef iterator const_iterator;
        
         // Define block loaders
         typedef GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
-                               SHARED_WIDTH, SHARED_STRIDE, SHARED_HEIGHT, SHARED_DEPTH, false, BORDERS,
-                               ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), TEXTURE_UID> LoadSync;
+                               SHARED_WIDTH, SHARED_STRIDE, SHARED_HEIGHT, SHARED_DEPTH, false, 
+                               BorderBehavior, GlobalIOScheme> LoadSync;
         typedef GlobalToShared<T, DIMS, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, 
-                               SHARED_WIDTH, SHARED_STRIDE, SHARED_HEIGHT, SHARED_DEPTH, true, BORDERS,
-                               ((TEXTURE_UID >= 0) ? GR_TEXTURE : GRS), TEXTURE_UID> LoadAsync;
+                               SHARED_WIDTH, SHARED_STRIDE, SHARED_HEIGHT, SHARED_DEPTH, true, 
+                               BorderBehavior, GlobalIOScheme> LoadAsync;
 
         /**
          * @brief Initializes the container.

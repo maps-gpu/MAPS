@@ -37,19 +37,6 @@
 
 namespace maps
 {
-    /**
-     * @brief Determines the behavior when accessing data beyond the 
-     *        dimensions of the input data.
-     */
-    enum BorderBehavior
-    {
-        WB_NOCHECKS,    ///< Assume input is allocated beyond the boundaries 
-                        ///  and do not perform the checks.
-        WB_ZERO,        ///< Return a constant value of T(0).
-        WB_COPY,        ///< Copy the closest value at the border.
-        WB_WRAP,        ///< Wrap the results around the input data.
-    };
-    
     /// @brief The ILP scheme to use.
     enum ILPScheme
     {
@@ -59,14 +46,6 @@ namespace maps
 
         ILP_SKIPBLOCK,         ///< Striped indices, skipping by block size 
                                ///  each time (for coalescing and general use).
-    };
-
-    enum GlobalReadScheme
-    {
-        GR_DIRECT = 0,          ///< Reads the pointer directly
-        GR_DISTINCT,            ///< Reads the pointer using LDG/Noncoherent 
-                                ///  cache
-        GR_TEXTURE,             ///< Reads the pointer using textures
     };
 
     // The use of enum ensures compile-time evaluation (pre-C++11 "constexpr").

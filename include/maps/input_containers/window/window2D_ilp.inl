@@ -48,8 +48,8 @@ namespace maps
 
     // Specialization for small window aprons that does not use shared memory
     template<int BLOCK_WIDTH, int BLOCK_HEIGHT>
-    class Window<uint8_t, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 4, 2, 1, WB_WRAP,
-                 -1, GR_DISTINCT, true> : public IInputContainer
+    class Window<uint8_t, 2, BLOCK_WIDTH, BLOCK_HEIGHT, 1, 1, 4, 2, 1, WrapBoundaries,
+                 DistinctIO, true> : public IInputContainer
     {
         enum
         {

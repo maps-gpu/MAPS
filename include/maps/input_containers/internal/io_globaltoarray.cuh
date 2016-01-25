@@ -39,10 +39,10 @@
 namespace maps
 {
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-              int DIMX, int DIMY, int DIMZ, BorderBehavior BORDERS, 
-              GlobalReadScheme GRS, int TEXTURE_UID>
+              int DIMX, int DIMY, int DIMZ, typename BoundaryConditions, 
+              typename GlobalIOScheme>
     struct GlobalToArray<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, DIMX, 
-                         DIMY, DIMZ, BORDERS, GRS, TEXTURE_UID>
+                         DIMY, DIMZ, BoundaryConditions, GlobalIOScheme>
     {
         static __device__ __forceinline__ bool Read(
             const T *ptr, int dimensions[1], int stride, int xoffset,
@@ -56,8 +56,8 @@ namespace maps
             #pragma unroll
             for (int i = 0; i < DIMX; ++i)
             {
-                result &= IndexedRead<T, BORDERS, BLOCK_WIDTH, BLOCK_HEIGHT,
-                                      BLOCK_DEPTH, GRS, TEXTURE_UID>::Read1D(
+                
+                result &= BoundaryConditions::Read1D<T, GlobalIOScheme>(
                     ptr, xoffset + i, dimensions[0], regs[i]);
             }
 
@@ -66,10 +66,10 @@ namespace maps
     };
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH,
-              int DIMX, int DIMY, int DIMZ, BorderBehavior BORDERS, 
-              GlobalReadScheme GRS, int TEXTURE_UID>
+              int DIMX, int DIMY, int DIMZ, typename BoundaryConditions, 
+              typename GlobalIOScheme>
     struct GlobalToArray<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, DIMX, 
-                         DIMY, DIMZ, BORDERS, GRS, TEXTURE_UID>
+                         DIMY, DIMZ, BoundaryConditions, GlobalIOScheme>
     {
         static __device__ __forceinline__ bool Read(
             const T *ptr, int dimensions[2], int stride, int xoffset,
@@ -86,9 +86,7 @@ namespace maps
                 #pragma unroll
                 for (int x = 0; x < DIMX; ++x)
                 {
-                    result &= IndexedRead<T, BORDERS, BLOCK_WIDTH, BLOCK_HEIGHT,
-                                          BLOCK_DEPTH, GRS, 
-                                          TEXTURE_UID>::Read2D(
+                    result &= BoundaryConditions::Read2D<T, GlobalIOScheme>(
                       ptr, xoffset + x, dimensions[0], stride, yoffset + y, 
                       dimensions[1], regs[y * DIMX + x]);
                 }
@@ -99,27 +97,48 @@ namespace maps
     };
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-              int DIMX, int DIMY, int DIMZ, BorderBehavior BORDERS, 
-              GlobalReadScheme GRS, int TEXTURE_UID>
+              int DIMX, int DIMY, int DIMZ, typename BoundaryConditions, 
+              typename GlobalIOScheme>
     struct GlobalToArray<T, 3, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, DIMX, 
-                         DIMY, DIMZ, BORDERS, GRS, TEXTURE_UID>
+                         DIMY, DIMZ, BoundaryConditions, GlobalIOScheme>
     {
         static __device__ __forceinline__ bool Read(
             const T *ptr, int dimensions[3], int stride, int xoffset,
             int yoffset, int zoffset, T (&regs)[DIMX*DIMY*DIMZ],
             int chunkID, int num_chunks)
         {
-            // TODO: 3D reads
-            return false;
+            // TODO (later): Vectorized reads
+
+            bool result = true;
+
+            #pragma unroll
+            for (int z = 0; z < DIMZ; ++z)
+            {
+                #pragma unroll
+                for (int y = 0; y < DIMY; ++y)
+                {
+                    #pragma unroll
+                    for (int x = 0; x < DIMX; ++x)
+                    {
+                        result &= BoundaryConditions::Read3D<T, GlobalIOScheme>(
+                            ptr,
+                            xoffset + x, dimensions[0], stride, yoffset + y,
+                            dimensions[1], zoffset + z, dimensions[2],
+                            regs[z * DIMY * DIMX + y * DIMX + x]);
+                    }
+                }
+            }
+
+            return true;
         }
     };
 
     //////////////////////////////////////////////////////////////////////////
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-              int DIMX, int DIMY, int DIMZ>
+              int DIMX, int DIMY, int DIMZ, typename GlobalIOScheme>
     struct ArrayToGlobal<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, DIMX, 
-                         DIMY, DIMZ>
+                         DIMY, DIMZ, GlobalIOScheme>
     {
         static __device__ __forceinline__ bool Write(
             const T (&regs)[DIMX*DIMY*DIMZ], int dimensions[1], int stride, 
@@ -130,8 +149,8 @@ namespace maps
             #pragma unroll
             for (int i = 0; i < DIMX; ++i)
             {
-                GlobalWrite<T>::Write(ptr, xoffset + threadIdx.x * DIMX + i, 
-                                      regs[i]);
+                GlobalIOScheme::Write<T>(ptr, xoffset + threadIdx.x * DIMX + i, 
+                                         regs[i]);
             }
 
             return true;
@@ -139,22 +158,22 @@ namespace maps
     };
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-              int DIMX, int DIMY, int DIMZ>
+              int DIMX, int DIMY, int DIMZ, typename GlobalIOScheme>
     struct ArrayToGlobal<T, 2, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, DIMX, 
-                         DIMY, DIMZ>
+                         DIMY, DIMZ, GlobalIOScheme>
     {
         static __device__ __forceinline__ bool Write(
             const T (&regs)[DIMX*DIMY*DIMZ], int dimensions[2], int stride, 
                 int xoffset, int yoffset, int zoffset, T *ptr)
         {
-            // TODO (later): Vectorized reads
+            // TODO (later): Vectorized writes
             #pragma unroll
             for (int y = 0; y < DIMY; ++y)
             {
                 #pragma unroll
                 for (int x = 0; x < DIMX; ++x)
                 {
-                    GlobalWrite<T>::Write(ptr, 
+                    GlobalIOScheme::Write<T>(ptr,
                       xoffset + threadIdx.x * DIMX + x + 
                       (yoffset + threadIdx.y * DIMY + y) * stride, 
                       regs[y * DIMX + x]);
@@ -166,9 +185,9 @@ namespace maps
     };
 
     template <typename T, int BLOCK_WIDTH, int BLOCK_HEIGHT, int BLOCK_DEPTH, 
-              int DIMX, int DIMY, int DIMZ>
+              int DIMX, int DIMY, int DIMZ, typename GlobalIOScheme>
     struct ArrayToGlobal<T, 3, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, DIMX, 
-                         DIMY, DIMZ>
+                         DIMY, DIMZ, GlobalIOScheme>
     {
         static __device__ __forceinline__ bool Write(
             const T (&regs)[DIMX*DIMY*DIMZ], int dimensions[3], int stride, 
@@ -184,7 +203,7 @@ namespace maps
                     #pragma unroll
                     for (int x = 0; x < DIMX; ++x)
                     {
-                        GlobalWrite<T>::Write(
+                        GlobalIOScheme::Write<T>(
                           ptr, 
                           xoffset + threadIdx.x * DIMX + x + 
                           (yoffset + threadIdx.y * DIMY + y) * stride + 

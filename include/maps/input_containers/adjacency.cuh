@@ -32,7 +32,7 @@
 
 #include "../internal/common.h"
 #include "internal/io_common.cuh"
-#include "internal/io_globalread.cuh"
+#include "internal/io_global.cuh"
 
 namespace maps
 {

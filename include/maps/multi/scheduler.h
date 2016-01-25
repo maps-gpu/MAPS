@@ -75,7 +75,7 @@ namespace maps {
                 bool m_bUnmodified;
 
                 std::shared_ptr<Task> m_task;
-                routine_t m_routine;
+                std::function<routine_t> m_routine;
                 void *m_copiedContext;
                 std::shared_ptr< std::vector<uint8_t> > m_context_buffer;
 
@@ -851,7 +851,7 @@ namespace maps {
                 return true;
             }
 
-            virtual bool CallUnmodifiedRoutine(routine_t routine, void *context, std::vector<uint8_t>& copied_context, int deviceIdx,
+            virtual bool CallUnmodifiedRoutine(const std::function<routine_t>& routine, void *context, std::vector<uint8_t>& copied_context, int deviceIdx,
                                                const GridSegment& segmentation,
                                                std::vector<void *>& kernel_parameters,
                                                const std::vector<DatumSegment>& container_segments, std::vector<IDatum *>& /*kernel_data*/,
@@ -967,7 +967,7 @@ namespace maps {
             }
 
             template<typename... Args>
-            taskHandle_t InvokeUnmodified(routine_t routine, void *context, dim3 work_dims,
+            taskHandle_t InvokeUnmodified(const std::function<routine_t>& routine, void *context, dim3 work_dims,
                                           const Args&... args)
             {
                 return InvokeInternal(nullptr, work_dims, dim3(), 0, true, routine, context, 0, false, false, args...);
@@ -988,7 +988,7 @@ namespace maps {
             }
 
             template<typename... Args>
-            taskHandle_t InvokeAllUnmodified(routine_t routine, void *context, dim3 work_dims,
+            taskHandle_t InvokeAllUnmodified(const std::function<routine_t>& routine, void *context, dim3 work_dims,
                                              const Args&... args)
             {
                 return InvokeInternal(nullptr, work_dims, dim3(), 0, true, routine, context, 0, true, false, args...);
@@ -1011,7 +1011,7 @@ namespace maps {
 
             template<typename Kernel, typename... Args>
             taskHandle_t InvokeInternal(Kernel kernel, dim3 grid_dims, dim3 block_dims,
-                                        size_t dynamic_smem, bool bUnmodified, routine_t routine,
+                                        size_t dynamic_smem, bool bUnmodified, const std::function<routine_t>& routine,
                                         void *context, size_t context_size, bool bInvokeAll, bool bSkip, const Args&... args)
             {
                 // This function acts as the first pass of the scheduler on the tasks
@@ -1034,7 +1034,7 @@ namespace maps {
                 return InvokeInternal(task_ptr, bUnmodified, routine, context, context_size, bInvokeAll, bSkip);
             }
 
-            taskHandle_t InvokeInternal(std::shared_ptr<Task>& task_ptr, bool bUnmodified, routine_t routine,
+            taskHandle_t InvokeInternal(std::shared_ptr<Task>& task_ptr, bool bUnmodified, const std::function<routine_t>& routine,
                                         void *context, size_t context_size, bool bInvokeAll, bool bSkip)
             {
                 unsigned int total_gpus = (unsigned int)m_activeGPUs.size();

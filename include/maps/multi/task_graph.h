@@ -87,7 +87,7 @@ namespace maps
             size_t dsmem;
 
             // Unmodified routines
-            routine_t routine;
+            std::function<routine_t> routine;
             std::vector<uint8_t> context_buffer;
             void *context;
             GridSegment segmentation;
@@ -551,7 +551,7 @@ namespace maps
                 return true;
             }
 
-            virtual bool CallUnmodifiedRoutine(routine_t routine, void *context, std::vector<uint8_t>& copied_context, int deviceIdx, const GridSegment& segmentation,
+            virtual bool CallUnmodifiedRoutine(const std::function<routine_t>& routine, void *context, std::vector<uint8_t>& copied_context, int deviceIdx, const GridSegment& segmentation,
                                                std::vector<void *>& kernel_parameters,
                                                const std::vector<DatumSegment>& container_segments,
                                                std::vector<IDatum *>& kernel_data,

@@ -229,7 +229,7 @@ namespace maps
 
         /// @brief An unmodified function to be called instead of a kernel in a task. Kernels must run on the given stream,
         /// and cudaSetDevice must not be called during this routine (unless returned to original state).
-        typedef bool(*routine_t)(void *context, int deviceIdx, cudaStream_t stream,
+        typedef bool(routine_t)(void *context, int deviceIdx, cudaStream_t stream,
                                  const GridSegment& task_segment,
                                  const std::vector<void *>& parameters,
                                  const std::vector<DatumSegment>& container_segments,

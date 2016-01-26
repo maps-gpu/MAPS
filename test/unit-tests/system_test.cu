@@ -58,16 +58,27 @@ __global__ void InliningKernel(maps::WindowSingleGPU<float, 2, 1, 1, 1, 0> in,
     out.commit();
 }
 
+__global__ void CopyKernel(const float *in, float *out, int w, int stride, int h)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int idy = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx >= w || idy >= h)
+        return;
+
+    out[idy * stride + idx] = in[idy * stride + idx];
+}
+
 // If this test succeeds, the SASS should show a simple copy kernel.
 TEST(SystemTests, Inlining)
 {
     // Allocate GPU memory
-    float *d_in = nullptr, *d_out = nullptr;
+    float *d_in = nullptr, *d_out = nullptr, *d_regression = nullptr;
     CUASSERT_NOERR(cudaMalloc(&d_in, sizeof(float)));
     CUASSERT_NOERR(cudaMalloc(&d_out, sizeof(float)));
+    CUASSERT_NOERR(cudaMalloc(&d_regression, sizeof(float)));
 
     // Copy input
-    float in_val = 123.0f, out_val = 0.0f;
+    float in_val = 123.0f, out_val = 0.0f, reg_val = 0.0f;
     CUASSERT_NOERR(cudaMemcpy(d_in, &in_val, sizeof(float), cudaMemcpyHostToDevice));
 
     // Create structures
@@ -85,12 +96,23 @@ TEST(SystemTests, Inlining)
     CUASSERT_NOERR(cudaLaunchKernel(actual_kernel, dim3(1, 1, 1), dim3(1, 1, 1), args));
     CUASSERT_NOERR(cudaDeviceSynchronize());
 
+    // Run regression
+    int one = 1;
+    void *rargs[] = { &d_in, &d_regression, &one, &one, &one };
+    void *regression_kernel = (void *)CopyKernel;
+    CUASSERT_NOERR(cudaLaunchKernel(regression_kernel, dim3(1, 1, 1), dim3(1, 1, 1), rargs));
+    CUASSERT_NOERR(cudaDeviceSynchronize());
+
     // Copy output
     CUASSERT_NOERR(cudaMemcpy(&out_val, d_out, sizeof(float), cudaMemcpyDeviceToHost));
+    CUASSERT_NOERR(cudaMemcpy(&reg_val, d_regression, sizeof(float), cudaMemcpyDeviceToHost));
 
     ASSERT_EQ(in_val, out_val);
+    ASSERT_EQ(reg_val, out_val);
 
     // Free GPU memory
     CUASSERT_NOERR(cudaFree(d_in));
     CUASSERT_NOERR(cudaFree(d_out));
+    CUASSERT_NOERR(cudaFree(d_regression));
 }
+

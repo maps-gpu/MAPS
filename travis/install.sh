@@ -15,6 +15,7 @@ apt-get install \
 
 # gtest
 wget --no-check-certificate https://github.com/google/googletest/archive/release-1.7.0.zip -O gtest.zip
+unzip gtest.zip
 mv googletest-release-1.7.0/* win/gtest
 chmod -R a+rw win/gtest
 rm -rf googletest-release-1.7.0 gtest.zip

@@ -5,14 +5,19 @@
 
 set -e
 
+# Set GCC 4.9 and Clang 3.6 to be the defaults
+apt-get remove gcc-4.6 clang-3.4
+
 # This ppa is for gflags and glog
 add-apt-repository -y ppa:tuleu/precise-backports
 add-apt-repository -y ppa:ubuntu-toolchain-r/test
+add-apt-repository -y ppa:h-rayflood/llvm
 apt-get -y update
 apt-get install \
     wget git curl \
     libgflags-dev libgoogle-glog-dev \
-    bc gcc-4.9
+    bc gcc-4.9 clang-3.6
+
 
 # gtest
 wget --no-check-certificate https://github.com/google/googletest/archive/release-1.7.0.zip -O gtest.zip

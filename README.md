@@ -1,6 +1,8 @@
 MAPS: GPU Optimization and Memory Abstraction Framework
 =======================================================
 
+[![Build Status](https://travis-ci.org/maps-gpu/MAPS.svg?branch=master)](https://travis-ci.org/maps-gpu/MAPS)
+
 MAPS is a header-only C++ CUDA template library for automatic optimization of 
 GPU kernels and transparent partitioning of multi-GPU tasks. 
 It uses memory access patterns to provide near-optimal 

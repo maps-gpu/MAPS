@@ -11,7 +11,7 @@ apt-get -y update
 apt-get install \
     wget git curl \
     libgflags-dev libgoogle-glog-dev \
-    bc
+    bc gcc-4.9
 
 # gtest
 wget --no-check-certificate https://github.com/google/googletest/archive/release-1.7.0.zip -O gtest.zip

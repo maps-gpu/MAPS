@@ -7,6 +7,7 @@ set -e
 
 # This ppa is for gflags and glog
 add-apt-repository -y ppa:tuleu/precise-backports
+add-apt-repository -y ppa:ubuntu-toolchain-r/test
 apt-get -y update
 apt-get install \
     wget git curl \

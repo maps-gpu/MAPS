@@ -6,8 +6,8 @@
 set -e
 
 # Set GCC 4.9 and Clang 3.6 to be the defaults (1)
-update-alternatives --remove-all gcc
-update-alternatives --remove-all g++
+#update-alternatives --remove-all gcc
+#update-alternatives --remove-all g++
 
 # This ppa is for gflags and glog
 add-apt-repository -y ppa:tuleu/precise-backports

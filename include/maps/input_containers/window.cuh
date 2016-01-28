@@ -250,7 +250,7 @@ namespace maps
         __host__ __device__ Window() : block_offset(0), m_gridWidth(0), 
                                        m_containsApron(false), m_stride(0)
         {
-            m_dimensions[0] = m_dimensions[1] = 0;
+            m_dimensions[0] = 0;
         }
 
         /**

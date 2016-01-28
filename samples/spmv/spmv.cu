@@ -372,7 +372,8 @@ std::shared_ptr< SparseMatrix<float> > ReadSparseMatrix(const std::string& matri
 
     for (i = 0; i < nz; i++)
     {
-        fscanf(f, "%d %d %lg\n", &I[i], &J[i], &val[i]);
+        if(!fscanf(f, "%d %d %lg\n", &I[i], &J[i], &val[i]))
+            continue;
         I[i]--;  /* adjust from 1-based to 0-based */
         J[i]--;
     }

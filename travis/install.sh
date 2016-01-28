@@ -5,10 +5,6 @@
 
 set -e
 
-# Set GCC 4.9 and Clang 3.6 to be the defaults (1)
-#update-alternatives --remove-all gcc
-#update-alternatives --remove-all g++
-
 # This ppa is for gflags and glog
 add-apt-repository -y ppa:tuleu/precise-backports
 add-apt-repository -y ppa:ubuntu-toolchain-r/test
@@ -17,9 +13,9 @@ apt-get -y update
 apt-get install \
     wget git curl \
     libgflags-dev libgoogle-glog-dev \
-    bc gcc-4.9 g++-4.9 clang
+    bc gcc-4.9 g++-4.9
 
-# Set GCC 4.9 and Clang 3.6 to be the defaults (2)
+# Set GCC 4.9 as the default compiler
 update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.6 10
 update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 20
 update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.6 10

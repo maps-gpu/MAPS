@@ -131,7 +131,7 @@ bool HistogramCPURegression(const unsigned int *otherResult)
         if (host_hist[i] != otherResult[i])
         {
             if (FLAGS_print_values)
-                printf("ERROR AT INDEX %d: real: %d, other: %d\n", i, 
+                printf("ERROR AT INDEX %d: real: %d, other: %d\n", (int)i, 
                        (int)host_hist[i], (int)otherResult[i]);
             numErrors++;
         }

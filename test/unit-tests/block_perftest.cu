@@ -284,8 +284,9 @@ TEST(Performance, Block2D_MatrixMultiplication)
             if (fabs(1.0f - (host_resultNaive[y * width + x] / host_resultMAPS[y * width + x])) > kEpsilon)
             {
                 if (numErrorsMAPS == 0)
-                    printf("MAPS: First error in (%d, %d): %f != %f\n", x, y,
-                           host_resultNaive[y * width + x], host_resultMAPS[y * width + x]);
+                    printf("MAPS: First error in (%d, %d): %f != %f\n",
+                           (int)x, (int)y, host_resultNaive[y * width + x],
+                           host_resultMAPS[y * width + x]);
 
                 numErrorsMAPS++;
             }
@@ -295,8 +296,9 @@ TEST(Performance, Block2D_MatrixMultiplication)
             if (fabs(1.0f - (host_resultNaive[y * width + x] / host_resultCUBLAS[x * width + y])) > kEpsilon)
             {
                 if (numErrorsCUBLAS == 0)
-                    printf("CUBLAS: First error in (%d, %d): %f != %f\n", x, y,
-                           host_resultNaive[y * width + x], host_resultCUBLAS[x * width + y]);
+                    printf("CUBLAS: First error in (%d, %d): %f != %f\n",
+                           (int)x, (int)y, host_resultNaive[y * width + x],
+                           host_resultCUBLAS[x * width + y]);
 
                 numErrorsCUBLAS++;
             }

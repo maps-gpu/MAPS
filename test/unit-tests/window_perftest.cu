@@ -287,8 +287,9 @@ TEST(Performance, Window2D_Convolution)
             if (fabs(host_resultNaive[y * width + x] - host_resultMAPS[y * width + x]) > 1e-6)
             {
                 if (numErrorsMAPS == 0)
-                    printf("MAPS: First error in (%d, %d): %f != %f\n", x, y,
-                           host_resultNaive[y * width + x], host_resultMAPS[y * width + x]);
+                    printf("MAPS: First error in (%d, %d): %f != %f\n",
+                           (int)x, (int)y, host_resultNaive[y * width + x],
+                           host_resultMAPS[y * width + x]);
 
                 numErrorsMAPS++;
             }
@@ -298,8 +299,9 @@ TEST(Performance, Window2D_Convolution)
             if (fabs(host_resultNaive[y * width + x] - host_resultMAPSTex[y * width + x]) > 1e-6)
             {
                 if (numErrorsMAPSTex == 0)
-                    printf("MAPS(Texture): First error in (%d, %d): %f != %f\n", x, y,
-                           host_resultNaive[y * width + x], host_resultMAPSTex[y * width + x]);
+                    printf("MAPS(Texture): First error in (%d, %d): %f != %f\n",
+                           (int)x, (int)y, host_resultNaive[y * width + x],
+                           host_resultMAPSTex[y * width + x]);
 
                 numErrorsMAPSTex++;
             }
@@ -309,8 +311,10 @@ TEST(Performance, Window2D_Convolution)
             if (fabs(host_resultNaive[y * width + x] - host_resultMAPSILP[y * width + x]) > 1e-6)
             {
                 if (numErrorsMAPSILP == 0)
-                    printf("MAPS(Texture+ILP): First error in (%d, %d): %f != %f\n", x, y,
-                    host_resultNaive[y * width + x], host_resultMAPSILP[y * width + x]);
+                    printf("MAPS(Texture+ILP): First error in (%d, %d): "
+                           "%f != %f\n", (int)x, (int)y,
+                           host_resultNaive[y * width + x],
+                           host_resultMAPSILP[y * width + x]);
 
                 numErrorsMAPSILP++;
             }
@@ -318,7 +322,8 @@ TEST(Performance, Window2D_Convolution)
         }
     }
 
-    printf("Conv2 of a %dx%d image with a %dx%d kernel (%d times)\n", width, height, KERNEL_RADIUS * 2 + 1, KERNEL_RADIUS * 2 + 1, REPETITIONS);
+    printf("Conv2 of a %dx%d image with a %dx%d kernel (%d times)\n",
+           (int)width, (int)height, KERNEL_RADIUS * 2 + 1, KERNEL_RADIUS * 2 + 1, REPETITIONS);
 
     printf("Naive kernel time: %f ms\n\n", std::chrono::duration_cast<std::chrono::microseconds>(nt2 - nt1).count() / 1000.0 / REPETITIONS);
     printf("MAPS  kernel time: %f ms\n\n", std::chrono::duration_cast<std::chrono::microseconds>(mt2 - mt1).count() / 1000.0 / REPETITIONS);

@@ -1255,7 +1255,7 @@ TEST(Window, NoRadiusMAPSMulti)
     in.Bind(&in_val[0]);
     out.Bind(&out_val[0]);
 
-    maps::multi::Scheduler sched{0};
+    maps::multi::Scheduler sched ({0});
 
     sched.AnalyzeCall(dim3(), dim3(BLOCK_WIDTH, BLOCK_HEIGHT),
                       maps::multi::Window2D<float, BLOCK_WIDTH, BLOCK_HEIGHT, 0>(in),

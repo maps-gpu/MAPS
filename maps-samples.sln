@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gflags", "win\gflags\gflags.vcxproj", "{AB25202B-854F-4ABC-86E1-424FF362313D}"
 EndProject
@@ -18,6 +18,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "unit-tests", "test\unit-tests\unit-tests.vcxproj", "{3E590D18-A644-45C2-BC2A-DF2B96F3BB15}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SpMV", "samples\spmv\spmv.vcxproj", "{4FF30E5E-21EF-47CA-B277-E434EFA0E1AF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "conv2", "samples\conv2\conv2.vcxproj", "{8E73BA63-5F3D-4707-B154-6BA52FC9FE8E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -83,6 +85,14 @@ Global
 		{4FF30E5E-21EF-47CA-B277-E434EFA0E1AF}.Release|Win32.Build.0 = Release|Win32
 		{4FF30E5E-21EF-47CA-B277-E434EFA0E1AF}.Release|x64.ActiveCfg = Release|x64
 		{4FF30E5E-21EF-47CA-B277-E434EFA0E1AF}.Release|x64.Build.0 = Release|x64
+		{8E73BA63-5F3D-4707-B154-6BA52FC9FE8E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8E73BA63-5F3D-4707-B154-6BA52FC9FE8E}.Debug|Win32.Build.0 = Debug|Win32
+		{8E73BA63-5F3D-4707-B154-6BA52FC9FE8E}.Debug|x64.ActiveCfg = Debug|x64
+		{8E73BA63-5F3D-4707-B154-6BA52FC9FE8E}.Debug|x64.Build.0 = Debug|x64
+		{8E73BA63-5F3D-4707-B154-6BA52FC9FE8E}.Release|Win32.ActiveCfg = Release|Win32
+		{8E73BA63-5F3D-4707-B154-6BA52FC9FE8E}.Release|Win32.Build.0 = Release|Win32
+		{8E73BA63-5F3D-4707-B154-6BA52FC9FE8E}.Release|x64.ActiveCfg = Release|x64
+		{8E73BA63-5F3D-4707-B154-6BA52FC9FE8E}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

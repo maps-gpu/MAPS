@@ -42,6 +42,9 @@ target_link_libraries(sgemm gflags pthread)
 cuda_add_executable(histogram samples/histogram/main.cpp samples/histogram/histogram.cu)
 target_link_libraries(histogram gflags pthread)
 
+cuda_add_executable(conv2 samples/conv2/conv2.cu)
+target_link_libraries(conv2 gflags pthread)
+
 cuda_add_executable(spmv samples/spmv/spmv.cu samples/spmv/mmio.cpp 
                     samples/spmv/main.cpp)
 target_link_libraries(spmv gflags pthread)

@@ -34,9 +34,10 @@
 #ifndef __MAPS_MULTI_CUH
 #define __MAPS_MULTI_CUH
 
-#include <cuda_runtime.h>  // For dim3
+#include <cuda_runtime.h>  // dim3
 #include <iostream>
 
+#include "../internal/common.cuh" // MAPS_INIT
 #include "scheduler.h"
 #include "task_graph.h"
 #include "aggregators.h"
@@ -58,32 +59,8 @@ namespace maps
             #define MAPS_MULTI_INIT()
         #endif        
 
-        #define MMI1(arg1) \
-            MAPS_MULTI_INIT(); \
-            MAPS_INIT(arg1);
-
-        #define MMI2(arg1, arg2) \
-            MAPS_MULTI_INIT(); \
-            MAPS_INIT(arg1, arg2);
-        
-        #define MMI3(arg1, arg2, arg3) \
-            MAPS_MULTI_INIT(); \
-            MAPS_INIT(arg1, arg2, arg3);
-
-        #define MMI4(arg1, arg2, arg3, arg4) \
-            MAPS_MULTI_INIT(); \
-            MAPS_INIT(arg1, arg2, arg3, arg4);
-
-        #define MMI5(arg1, arg2, arg3, arg4, arg5) \
-            MAPS_MULTI_INIT(); \
-            MAPS_INIT(arg1, arg2, arg3, arg4, arg5);
-
-        #define EXPAND(x) x
-        #define GET_MACRO(_1,_2,_3,_4,_5,NAME,...) NAME
-        #define MAPS_MULTI_INITVARS(...) EXPAND(GET_MACRO(__VA_ARGS__, MMI5, MMI4, MMI3, MMI2, MMI1, MAPS_MULTI_INIT)(__VA_ARGS__))
-        
-        #define MAPS_FOREACH(iter, container) for(auto iter = container.begin(); iter.index() < decltype(container)::ELEMENTS; ++iter)
-        #define MAPS_FOREACH_ALIGNED(input_iter, input_container, output_iter) for(auto input_iter = input_container.align(output_iter); input_iter.index() < decltype(input_container)::ELEMENTS; ++input_iter)
+        /// @brief Initializes a list of containers simultaneously and prepares them for multi-GPU processing.
+        #define MAPS_MULTI_INITVARS(...)  MAPS_MULTI_INIT(); MAPS_INIT(__VA_ARGS__)
 
     } // namespace multi
 

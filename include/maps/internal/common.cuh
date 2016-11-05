@@ -33,6 +33,7 @@
 #include <cuda_runtime.h>
 #include <iterator>
 #include "common.h"
+#include "macro_helpers.h"
 
 namespace maps
 {
@@ -137,77 +138,49 @@ namespace maps
 
 
     // Helper macros for MAPS_INIT
-    #define _MI0()
-  
-    #define _MI1(arg1)                                                   \
-            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
-            arg1.init_async(arg1##_sdata);                               \
-            if(decltype(arg1)::SYNC_AFTER_INIT)                          \
-                __syncthreads();                                         \
-            arg1.init_async_postsync();
+    #define _MAPS_DEF_INIT(INDEX, arg)                                   \
+        __shared__ typename decltype(arg)::SharedData arg##_sdata;       \
+        arg.init_async(arg##_sdata);                                     \
 
-    #define _MI2(arg1, arg2)                                             \
-            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
-            __shared__ typename decltype(arg2)::SharedData arg2##_sdata; \
-            arg1.init_async(arg1##_sdata);                               \
-            arg2.init_async(arg2##_sdata);                               \
-            if(decltype(arg1)::SYNC_AFTER_INIT || decltype(arg2)::SYNC_AFTER_INIT) \
-                __syncthreads();                                         \
-            arg1.init_async_postsync();                                  \
-            arg2.init_async_postsync();
+    #define _MAPS_DEF_COND(INDEX, arg) decltype(arg)::SYNC_AFTER_INIT || 
+    #define _MAPS_DEF_POST(INDEX, arg) arg.init_async_postsync();
 
-    #define _MI3(arg1, arg2, arg3)                                       \
-            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
-            __shared__ typename decltype(arg2)::SharedData arg2##_sdata; \
-            __shared__ typename decltype(arg3)::SharedData arg3##_sdata; \
-            arg1.init_async(arg1##_sdata);                               \
-            arg2.init_async(arg2##_sdata);                               \
-            arg3.init_async(arg3##_sdata);                               \
-            if(decltype(arg1)::SYNC_AFTER_INIT || decltype(arg2)::SYNC_AFTER_INIT || decltype(arg3)::SYNC_AFTER_INIT) \
-                __syncthreads();                                         \
-            arg1.init_async_postsync();                                  \
-            arg2.init_async_postsync();                                  \
-            arg3.init_async_postsync();
 
-    #define _MI4(arg1, arg2, arg3, arg4)                                 \
-            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
-            __shared__ typename decltype(arg2)::SharedData arg2##_sdata; \
-            __shared__ typename decltype(arg3)::SharedData arg3##_sdata; \
-            __shared__ typename decltype(arg4)::SharedData arg4##_sdata; \
-            arg1.init_async(arg1##_sdata);                               \
-            arg2.init_async(arg2##_sdata);                               \
-            arg3.init_async(arg3##_sdata);                               \
-            arg4.init_async(arg4##_sdata);                               \
-            if(decltype(arg1)::SYNC_AFTER_INIT || decltype(arg2)::SYNC_AFTER_INIT || decltype(arg3)::SYNC_AFTER_INIT || decltype(arg4)::SYNC_AFTER_INIT) \
-                __syncthreads();                                         \
-            arg1.init_async_postsync();                                  \
-            arg2.init_async_postsync();                                  \
-            arg3.init_async_postsync();                                  \
-            arg4.init_async_postsync();
+    /// @brief Initializes a list of containers simultaneously.
+    #define MAPS_INIT(...)                                               \
+        __MAPS_PP_FOR_EACH(_MAPS_DEF_INIT, __VA_ARGS__);                 \
+        if(__MAPS_PP_FOR_EACH(_MAPS_DEF_COND, __VA_ARGS__) false)        \
+            __syncthreads();                                             \
+        __MAPS_PP_FOR_EACH(_MAPS_DEF_POST, __VA_ARGS__);
 
-    #define _MI5(arg1, arg2, arg3, arg4, arg5)                           \
-            __shared__ typename decltype(arg1)::SharedData arg1##_sdata; \
-            __shared__ typename decltype(arg2)::SharedData arg2##_sdata; \
-            __shared__ typename decltype(arg3)::SharedData arg3##_sdata; \
-            __shared__ typename decltype(arg4)::SharedData arg4##_sdata; \
-            __shared__ typename decltype(arg5)::SharedData arg5##_sdata; \
-            arg1.init_async(arg1##_sdata);                               \
-            arg2.init_async(arg2##_sdata);                               \
-            arg3.init_async(arg3##_sdata);                               \
-            arg4.init_async(arg4##_sdata);                               \
-            arg5.init_async(arg5##_sdata);                               \
-            if(decltype(arg1)::SYNC_AFTER_INIT || decltype(arg2)::SYNC_AFTER_INIT || decltype(arg3)::SYNC_AFTER_INIT || decltype(arg4)::SYNC_AFTER_INIT || decltype(arg5)::SYNC_AFTER_INIT) \
-                __syncthreads();                                         \
-            arg1.init_async_postsync();                                  \
-            arg2.init_async_postsync();                                  \
-            arg3.init_async_postsync();                                  \
-            arg4.init_async_postsync();                                  \
-            arg5.init_async_postsync();
+    // Internal macros for MAPS_FOREACH and MAPS_FOREACH_ALIGNED
+    #define MAPS_FOREACH_NOUNROLL(iter, container) for(auto iter = container.begin(); iter.index() < decltype(container)::ELEMENTS; ++iter)
+    #define MAPS_FOREACH_ALIGNED_NOUNROLL(input_iter, input_container, output_iter) for(auto input_iter = input_container.align(output_iter); input_iter.index() < decltype(input_container)::ELEMENTS; ++input_iter)
 
-    #define EXPAND(x) x
-    #define GET_MACRO(_1,_2,_3,_4,_5,NAME,...) NAME
-    #define MAPS_INIT(...) EXPAND(GET_MACRO(__VA_ARGS__, _MI5, _MI4, _MI3, _MI2, _MI1, _MI0)(__VA_ARGS__))
-        
+    // Define "MAPS_NOUNROLL" to disable automatic loop unrolling
+    #ifndef MAPS_NOUNROLL
+        #define MAPS_PRAGMA_UNROLL MAPS_PRAGMA(unroll)
+    #else
+        #define MAPS_PRAGMA_UNROLL
+    #endif
+
+    /**
+     * @brief Loops over a container iterator.
+     * @param [out] iter Resulting container iterator.
+     * @param [in]  container Container to traverse.
+     * @note Unrolls the loop by default. To disable, define "MAPS_NOUNROLL" prior to including MAPS.
+     */
+    #define MAPS_FOREACH(iter, container) MAPS_PRAGMA_UNROLL MAPS_FOREACH_NOUNROLL(iter, container)
+    
+    /**
+    * @brief Loops over a container iterator, aligning the address according to another iterator.
+    * @param [out] input_iter Resulting container iterator.
+    * @param [in]  input_container Container to traverse.
+    * @param [in]  output_iter Container to align to.
+    * @note Unrolls the loop by default. To disable, define "MAPS_NOUNROLL" prior to including MAPS.
+    */
+    #define MAPS_FOREACH_ALIGNED(input_iter, input_container, output_iter) MAPS_PRAGMA_UNROLL MAPS_FOREACH_ALIGNED_NOUNROLL(input_iter, input_container, output_iter)
+
 
 }  // namespace maps
 

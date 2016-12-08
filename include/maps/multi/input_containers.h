@@ -631,6 +631,10 @@ namespace maps
 
         };
 
+        template <typename T, int BLOCK_WIDTH, int WINDOW_APRON, typename BoundaryConditions = ZeroBoundaries,
+                  int IPX = 1, int BLOCK_HEIGHT = 1, int BLOCK_DEPTH = 1>
+        using Window1D = Window<T, 1, BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_DEPTH, WINDOW_APRON, IPX, 1, 1, BoundaryConditions>;
+        
         //////////////////////////////////////////////////////////////////////////////////////////////
         // BLOCK ND
         /////////////////////////////////////////////////////////////////////////////////////////////

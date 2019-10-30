@@ -9,11 +9,9 @@ os:
 #  - osx
 
 before_install:
+  - sudo apt-get -y install build-essential cuda-toolkit libgtest-dev googletest cmake
   - export NUM_THREADS=4
   - export SCRIPTS=./travis
-
-install:
-  - sudo -E $SCRIPTS/install.sh
 
 before_script:
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:/usr/local/cuda/lib64

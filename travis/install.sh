@@ -18,11 +18,10 @@ chmod +x cmake3.sh
 ./cmake3.sh --prefix=/usr/ --skip-license --exclude-subdir
 rm -f ./cmake3.sh
 
-# Install CUDA 10.1, if needed
-CUDA_URL=http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-10-1_10.1.243-1_amd64.deb
-CUDA_FILE=/tmp/cuda_install.deb
-curl $CUDA_URL -o $CUDA_FILE
-dpkg -i $CUDA_FILE
-rm -f $CUDA_FILE
-apt-get -y update
-#apt-get -y install cuda-toolkit-10-1 cuda-core-10-1 cuda-cublas-10-1 cuda-cublas-dev-10-1 cuda-cudart-10-1 cuda-cudart-dev-10-1
+# Install CUDA 10.1
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
+apt-get update
+apt-get -y install cuda-core-10-1 cuda-cublas-10-1 cuda-cublas-dev-10-1 cuda-cudart-10-1 cuda-cudart-dev-10-1

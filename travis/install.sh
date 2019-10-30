@@ -25,4 +25,4 @@ curl $CUDA_URL -o $CUDA_FILE
 dpkg -i $CUDA_FILE
 rm -f $CUDA_FILE
 apt-get -y update
-apt-get -y install cuda
+apt-get -y install cuda-toolkit-10-1 cuda-core-10-1 cuda-cublas-10-1 cuda-cublas-dev-10-1 cuda-cudart-10-1 cuda-cudart-dev-10-1

@@ -4,10 +4,8 @@
 set -e
 
 # Set GCC 4.9 as the default compiler
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.6 10
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 20
-update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.6 10
-update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 20
+update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 99
+update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 99
 update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30
 update-alternatives --set cc /usr/bin/gcc
 update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30

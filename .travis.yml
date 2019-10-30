@@ -10,9 +10,12 @@ os:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get -y install build-essential linux-headers-$(uname -r) nvidia-cuda-toolkit libgtest-dev cmake
+  - sudo apt-get -y install build-essential linux-headers-$(uname -r) nvidia-cuda-toolkit libgtest-dev libgflags-dev cmake
   - export NUM_THREADS=4
   - export SCRIPTS=./travis
+
+install:
+  - $SCRIPTS/install.sh
 
 before_script:
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:/usr/local/cuda/lib64

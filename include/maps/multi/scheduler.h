@@ -30,6 +30,7 @@
 #ifndef __MAPS_MULTI_SCHEDULER_H
 #define __MAPS_MULTI_SCHEDULER_H
 
+#include <functional>
 #include <initializer_list>
 #include <vector>
 #include <map>

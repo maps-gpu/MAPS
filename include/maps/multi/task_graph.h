@@ -32,6 +32,7 @@
 
 // EXPERIMENTAL: This API is experimental and not in use
 
+#include <functional>
 #include <queue>
 #include <vector>
 

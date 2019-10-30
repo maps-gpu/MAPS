@@ -12,7 +12,7 @@ endif()
 
 ############## BUILD ##############
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/include ${CUDA_INCLUDE_DIRS})
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   message("Debug mode")

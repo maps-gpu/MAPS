@@ -25,11 +25,4 @@ curl $CUDA_URL -o $CUDA_FILE
 dpkg -i $CUDA_FILE
 rm -f $CUDA_FILE
 apt-get -y update
-# Install the minimal CUDA subpackages required to test the build.
-# For a full CUDA installation, add 'cuda' to the list of packages.
-apt-get -y install cuda-core-10-1 cuda-cublas-10-1 cuda-cublas-dev-10-1 cuda-cudart-10-1 cuda-cudart-dev-10-1
-
-# Create CUDA symlink at /usr/local/cuda
-# (This would normally be created by the CUDA installer, but we create it
-# manually since we did a partial installation.)
-ln -s /usr/local/cuda-10.1 /usr/local/cuda
+apt-get -y install cuda

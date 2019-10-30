@@ -21,7 +21,7 @@ before_script:
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:/usr/local/cuda/lib64
 
 script: 
-  - export PATH=/usr/bin:/usr/local/bin:$PATH
+  - export PATH=/usr/bin:/usr/local/bin:/usr/local/cuda/bin:$PATH
   - which cmake
   - cmake --version
   - $SCRIPTS/run.sh

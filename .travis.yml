@@ -11,7 +11,7 @@ os:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get -y install build-essential linux-headers-$(uname -r) nvidia-cuda-toolkit libgflags-dev wget git curl bc gcc-6 g++-6
+  - sudo apt-get -y install build-essential linux-headers-$(uname -r) nvidia-cuda-toolkit libgflags-dev wget git curl bc
   - export NUM_THREADS=4
   - export SCRIPTS=./travis
 
@@ -22,8 +22,6 @@ before_script:
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:/usr/local/cuda/lib64
 
 script: 
-  - export CC=gcc-6
-  - export CXX=g++-6
   - $SCRIPTS/run.sh
 
 notifications:

@@ -1,4 +1,5 @@
 language: cpp
+dist: bionic
 
 compiler:
   - gcc
@@ -10,7 +11,7 @@ os:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get -y install build-essential linux-headers-$(uname -r) nvidia-cuda-toolkit libgflags-dev wget git curl bc gcc-4.9 g++-4.9
+  - sudo apt-get -y install build-essential linux-headers-$(uname -r) nvidia-cuda-toolkit libgflags-dev wget git curl bc
   - export NUM_THREADS=4
   - export SCRIPTS=./travis
 

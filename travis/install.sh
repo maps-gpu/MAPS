@@ -24,4 +24,5 @@ mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
 apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
 add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
 apt-get update
-apt-get -y install cuda-core-10-1 cuda-cublas-10-1 cuda-cublas-dev-10-1 cuda-cudart-10-1 cuda-cudart-dev-10-1
+apt-get -y install cuda-core-10-1 cuda-cublas-10-0 cuda-cublas-dev-10-0 cuda-cudart-10-1 cuda-cudart-dev-10-1
+ln -s /usr/local/cuda-10.1 /usr/local/cuda
